@@ -1,0 +1,2101 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MedResidencia</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0d0f14; --bg2:#13161e; --bg3:#1a1e2a; --bg4:#222636;
+  --border:#2a2f3f; --border2:#353b50;
+  --text:#e8eaf0; --text2:#9ba3bc; --text3:#636b83;
+  --accent:#4f8ef7; --accent2:#3a7aee;
+  --green:#34c47c; --red:#f05a5a; --yellow:#f5c842; --orange:#f5874f;
+  --pink:#f472b6;
+  --mono:'IBM Plex Mono',monospace; --sans:'Sora',sans-serif;
+  --r:8px; --rl:14px;
+}
+body.light {
+  --bg:#f0f4ff; --bg2:#ffffff; --bg3:#e8edf8; --bg4:#dde3f2;
+  --border:#cdd4e8; --border2:#b8c2d8;
+  --text:#1a1d2e; --text2:#4a5270; --text3:#8a93b0;
+  --green:#17a058; --red:#dc3a3a; --yellow:#c49a0a; --orange:#c8622a;
+  --pink:#db2777;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+*{-webkit-tap-highlight-color:transparent}
+button,a{touch-action:manipulation}
+html{-webkit-font-smoothing:antialiased}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;display:flex;transition:background .3s,color .3s}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--bg2)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+a{color:inherit;text-decoration:none}
+button{font-family:var(--sans);cursor:pointer;border:none;background:none}
+input,textarea,select{font-family:var(--sans);background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--r);padding:10px 14px;font-size:14px;outline:none;transition:border-color .15s;width:100%}
+input:focus,textarea:focus,select:focus{border-color:var(--accent)}
+input::placeholder,textarea::placeholder{color:var(--text3)}
+select option{background:var(--bg3)}
+
+/* Sidebar */
+#sidebar{width:230px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;height:100vh;position:sticky;top:0}
+.logo{padding:22px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.logo-icon{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--accent),#7c5fe8);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.logo-text{font-weight:700;font-size:14px;letter-spacing:-.3px}
+.logo-sub{font-size:10px;color:var(--text3);margin-top:-2px}
+nav{flex:1;padding:10px;display:flex;flex-direction:column;gap:2px}
+.nav-btn{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;font-size:13px;font-weight:400;color:var(--text2);transition:all .15s;text-align:left;width:100%}
+.nav-btn:hover{background:var(--bg3);color:var(--text)}
+.nav-btn.active{background:var(--bg3);color:var(--text);font-weight:600}
+.nav-btn.active .nav-dot{color:var(--accent)}
+.nav-icon{font-size:16px;width:20px;text-align:center}
+.sidebar-footer{padding:14px 18px;border-top:1px solid var(--border);font-size:10px;color:var(--text3);line-height:1.5}
+
+/* Main */
+#main{flex:1;overflow-y:auto;min-width:0}
+.page{padding:32px;max-width:1100px;display:none;animation:fadeUp .3s ease}
+.page.active{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+/* Components */
+.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:var(--r);font-size:13px;font-weight:500;transition:all .15s;white-space:nowrap;cursor:pointer}
+.btn-p{background:var(--accent);color:#fff}.btn-p:hover{background:var(--accent2);transform:translateY(-1px);box-shadow:0 4px 14px rgba(79,142,247,.3)}
+.btn-g{background:transparent;color:var(--text2);border:1px solid var(--border)}.btn-g:hover{background:var(--bg3);color:var(--text)}
+.btn-r{background:rgba(240,90,90,.12);color:var(--red);border:1px solid rgba(240,90,90,.2)}.btn-r:hover{background:rgba(240,90,90,.22)}
+.btn-sm{padding:5px 12px;font-size:12px}
+.btn-lg{padding:13px 26px;font-size:15px;font-weight:600}
+.btn:disabled{opacity:.45;cursor:default;transform:none!important;box-shadow:none!important}
+
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:22px}
+.card-sm{padding:14px}
+
+.badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase}
+.b-bas{background:rgba(79,142,247,.15);color:#6fa6ff}
+.b-cli{background:rgba(52,196,124,.15);color:#4dd890}
+.b-cul{background:rgba(245,200,66,.15);color:#f5c842}
+.b-fac{background:rgba(52,196,124,.12);color:var(--green)}
+.b-med{background:rgba(245,135,79,.12);color:var(--orange)}
+.b-dif{background:rgba(240,90,90,.12);color:var(--red)}
+
+.tag{display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-family:var(--mono);background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
+
+/* Grid helpers */
+.flex{display:flex}.fc{flex-direction:column}.fw{flex-wrap:wrap}
+.aic{align-items:center}.jcb{justify-content:space-between}.jcc{justify-content:center}
+.g1{gap:4px}.g2{gap:8px}.g3{gap:12px}.g4{gap:16px}.g5{gap:20px}.g6{gap:24px}
+.mt2{margin-top:8px}.mt3{margin-top:12px}.mt4{margin-top:16px}.mt6{margin-top:24px}.mb4{margin-bottom:16px}
+.w100{width:100%}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.grid4{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px}
+
+.divider{height:1px;background:var(--border);margin:18px 0}
+
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:50px 20px;color:var(--text3);text-align:center;gap:10px}
+.empty h3{color:var(--text2);font-size:15px;font-weight:500}
+
+.pbar-wrap{background:var(--bg3);border-radius:4px;overflow:hidden}
+.pbar{height:100%;border-radius:4px;transition:width .4s ease}
+
+/* Modal */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);z-index:999;display:none;align-items:center;justify-content:center;padding:20px}
+.overlay.open{display:flex;animation:fadeIn .2s ease}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--rl);padding:28px;max-width:640px;width:100%;max-height:88vh;overflow-y:auto;animation:fadeUp .25s ease}
+
+/* Toast */
+#toasts{position:fixed;bottom:22px;right:22px;z-index:9999;display:flex;flex-direction:column;gap:7px}
+.toast{padding:11px 16px;border-radius:var(--r);font-size:13px;font-weight:500;animation:fadeUp .25s ease;max-width:300px}
+.t-ok{background:var(--green);color:#041a0a}
+.t-err{background:var(--red);color:#fff}
+.t-info{background:var(--accent);color:#fff}
+
+/* Page header */
+.ph{margin-bottom:28px}
+.ph h1{font-size:22px;font-weight:700;letter-spacing:-.4px}
+.ph p{color:var(--text2);font-size:13px;margin-top:5px}
+
+/* Question card */
+.qcard{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:16px 18px;transition:border-color .15s}
+.qcard:hover{border-color:var(--border2)}
+
+/* Exam option */
+.opt-btn{display:flex;gap:10px;align-items:flex-start;padding:13px 15px;border-radius:var(--r);border:1px solid var(--border);background:var(--bg3);cursor:pointer;transition:all .15s;text-align:left;width:100%}
+.opt-btn:hover:not(:disabled){border-color:var(--border2);background:var(--bg4)}
+.opt-btn.selected{border-color:var(--accent);background:rgba(79,142,247,.1)}
+.opt-btn:disabled{cursor:default}
+.opt-circle{width:22px;height:22px;border-radius:50%;border:2px solid var(--border);flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.opt-btn.selected .opt-circle{border-color:var(--accent);background:var(--accent)}
+
+/* Result option colors */
+.opt-correct{border-color:rgba(52,196,124,.4)!important;background:rgba(52,196,124,.1)!important}
+.opt-wrong{border-color:rgba(240,90,90,.4)!important;background:rgba(240,90,90,.1)!important}
+
+/* Score ring */
+.score-ring{position:relative;width:130px;height:130px;flex-shrink:0}
+.score-ring svg{transform:rotate(-90deg)}
+.score-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+
+/* Nav numbers in exam */
+.qnum{width:30px;height:30px;border-radius:6px;font-size:11px;font-family:var(--mono);font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--bg3);color:var(--text2);transition:all .1s}
+.qnum.curr{background:var(--accent);color:#fff;border-color:var(--accent)}
+.qnum.done{background:rgba(52,196,124,.15);color:var(--green);border-color:rgba(52,196,124,.3)}
+.qnum.marked{background:rgba(245,200,66,.15);color:var(--yellow);border-color:rgba(245,200,66,.4)}
+.qnum.marked.done{background:rgba(245,200,66,.2);color:var(--yellow);border-color:rgba(245,200,66,.5)}
+
+/* Table */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{padding:8px 12px;text-align:left;color:var(--text3);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--border)}
+td{padding:10px 12px;border-bottom:1px solid var(--border)}
+
+/* Custom range slider */
+input[type=range]{
+  -webkit-appearance:none;appearance:none;
+  height:6px;border-radius:3px;outline:none;
+  background:linear-gradient(to right, var(--accent) 0%, var(--accent) 15%, var(--border2) 15%, var(--border2) 100%);
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;appearance:none;
+  width:20px;height:20px;border-radius:50%;
+  background:var(--accent);cursor:pointer;
+  box-shadow:0 0 0 3px rgba(79,142,247,.2);
+  transition:box-shadow .15s;
+}
+input[type=range]::-webkit-slider-thumb:hover{box-shadow:0 0 0 5px rgba(79,142,247,.25)}
+input[type=range]::-moz-range-thumb{
+  width:20px;height:20px;border-radius:50%;border:none;
+  background:var(--accent);cursor:pointer;
+  box-shadow:0 0 0 3px rgba(79,142,247,.2);
+}
+input[type=range]::-moz-range-track{height:6px;border-radius:3px;background:var(--border2)}
+input[type=range]::-moz-range-progress{background:var(--accent);border-radius:3px}
+.mode-card.sel{border-color:var(--accent);background:rgba(79,142,247,.08)}
+.mode-card h4{font-size:13px;font-weight:600;margin-bottom:3px}
+.mode-card p{font-size:11px;color:var(--text3);line-height:1.4}
+
+/* Stat mini card */
+.stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:18px;display:flex;flex-direction:column;gap:10px}
+.stat-icon{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:17px}
+.stat-val{font-size:28px;font-weight:700;font-family:var(--mono);line-height:1}
+.stat-label{font-size:12px;color:var(--text2)}
+
+/* Alert */
+.alert{border-radius:var(--r);padding:12px 15px;display:flex;align-items:center;gap:10px;font-size:13px;margin-bottom:18px}
+.alert-yellow{background:rgba(245,200,66,.08);border:1px solid rgba(245,200,66,.2);color:var(--yellow)}
+.alert-blue{background:rgba(79,142,247,.08);border:1px solid rgba(79,142,247,.2);color:var(--accent)}
+
+/* ═══════════════════════════════════════
+   MOBILE-FIRST RESPONSIVE
+═══════════════════════════════════════ */
+
+/* Bottom nav bar for mobile */
+#bottom-nav{
+  display:none;
+  position:fixed;bottom:0;left:0;right:0;
+  background:var(--bg2);border-top:1px solid var(--border);
+  z-index:900;padding:0 4px;padding-bottom:env(safe-area-inset-bottom);
+}
+.bnav-btn{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:8px 4px 6px;gap:2px;background:none;border:none;cursor:pointer;
+  color:var(--text3);transition:color .15s;font-size:10px;font-family:var(--sans);
+  min-height:56px;
+}
+.bnav-btn.active{color:var(--accent)}
+.bnav-icon{font-size:20px;line-height:1}
+
+/* Mobile hamburger/drawer */
+#mob-header{display:none;position:sticky;top:0;z-index:800;background:var(--bg2);border-bottom:1px solid var(--border);padding:12px 16px;align-items:center;justify-content:space-between}
+#mob-drawer{display:none;position:fixed;inset:0;z-index:950}
+#mob-drawer-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(2px)}
+#mob-drawer-panel{position:absolute;left:0;top:0;bottom:0;width:260px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;transform:translateX(-100%);transition:transform .25s ease;overflow-y:auto}
+#mob-drawer.open #mob-drawer-panel{transform:translateX(0)}
+
+@media(max-width:720px){
+  #sidebar{display:none}
+  #bottom-nav{display:flex}
+  #mob-header{display:flex}
+  #main{padding-bottom:70px}
+  .page{padding:14px 14px 20px}
+  .grid2,.grid3{grid-template-columns:1fr}
+  .grid4{grid-template-columns:1fr 1fr}
+  .ph h1{font-size:18px}
+  /* Bigger touch targets */
+  .btn{min-height:42px;padding:10px 16px}
+  .btn-sm{min-height:34px;padding:7px 12px}
+  .opt-btn{padding:14px 13px}
+  .qnum{width:34px;height:34px;font-size:12px}
+  /* Card adjustments */
+  .card{padding:16px}
+  .modal{padding:20px;margin:10px}
+  /* Stat cards 2-col on mobile */
+  .stat-card{padding:14px}
+  .stat-val{font-size:22px}
+  /* Exam specific */
+  .exam-q-text{font-size:15px!important;line-height:1.65!important}
+  /* Hide long labels on mobile */
+  .mob-hide{display:none!important}
+  /* Full width buttons in exam nav */
+  .exam-nav-btn{width:100%}
+}
+
+@media(max-width:400px){
+  .grid4{grid-template-columns:1fr}
+  .page{padding:12px 12px 20px}
+}
+</style>
+</head>
+<body>
+
+<!-- MOBILE HEADER -->
+<div id="mob-header">
+  <div style="display:flex;align-items:center;gap:10px">
+    <button onclick="openDrawer()" style="background:none;border:none;cursor:pointer;font-size:22px;padding:4px;color:var(--text)">☰</button>
+    <div>
+      <div style="font-weight:700;font-size:14px;letter-spacing:-.3px">MedResidencia</div>
+      <div style="font-size:10px;color:var(--text3)">¡Hola, Alejandra! 👋</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <button onclick="openColorPicker()" style="background:none;border:none;cursor:pointer;font-size:20px;padding:4px" title="Color del tema">🎨</button>
+    <button onclick="toggleTheme()" style="background:none;border:none;cursor:pointer;font-size:20px;padding:4px" title="Cambiar tema" id="mob-theme-btn">🌙</button>
+  </div>
+</div>
+
+<!-- MOBILE DRAWER -->
+<div id="mob-drawer" onclick="if(event.target===this||event.target.id==='mob-drawer-backdrop')closeDrawer()">
+  <div id="mob-drawer-backdrop"></div>
+  <div id="mob-drawer-panel">
+    <div style="padding:20px 18px 14px;border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+        <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--accent),#7c5fe8);display:flex;align-items:center;justify-content:center;font-size:16px">🏥</div>
+        <div>
+          <div style="font-weight:700;font-size:14px">MedResidencia</div>
+          <div style="font-size:10px;color:var(--text3)">MIR / ENARM / Residencia</div>
+        </div>
+      </div>
+    </div>
+    <nav style="flex:1;padding:10px;display:flex;flex-direction:column;gap:2px">
+      <button class="nav-btn" onclick="goto('dashboard');closeDrawer()"><span class="nav-icon nav-dot">📊</span> Dashboard</button>
+      <button class="nav-btn" onclick="goto('preguntas');closeDrawer()"><span class="nav-icon nav-dot">📚</span> Banco de Preguntas</button>
+      <button class="nav-btn" onclick="goto('simulacro');closeDrawer()"><span class="nav-icon nav-dot">🧪</span> Simulacros</button>
+      <button class="nav-btn" onclick="goto('semanas');closeDrawer()"><span class="nav-icon nav-dot">📅</span> Semanas</button>
+      <button class="nav-btn" onclick="goto('estadisticas');closeDrawer()"><span class="nav-icon nav-dot">📈</span> Estadísticas</button>
+      <button class="nav-btn" onclick="goto('refuerzo');closeDrawer()"><span class="nav-icon nav-dot">⚡</span> Modo Refuerzo</button>
+    </nav>
+    <div style="padding:14px 18px;border-top:1px solid var(--border)">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <button onclick="exportBackup();closeDrawer()" style="width:100%;padding:10px;border-radius:6px;background:rgba(52,196,124,.12);color:var(--green);border:1px solid rgba(52,196,124,.25);font-size:12px;font-family:var(--sans);cursor:pointer;font-weight:500">💾 Exportar backup</button>
+        <button onclick="document.getElementById('import-input-mob').click()" style="width:100%;padding:10px;border-radius:6px;background:rgba(79,142,247,.1);color:var(--accent);border:1px solid rgba(79,142,247,.2);font-size:12px;font-family:var(--sans);cursor:pointer;font-weight:500">📂 Importar backup</button>
+        <button onclick="openColorPicker();closeDrawer()" style="width:100%;padding:10px;border-radius:6px;background:var(--bg3);color:var(--text2);border:1px solid var(--border);font-size:12px;font-family:var(--sans);cursor:pointer;font-weight:500">🎨 Color del tema</button>
+        <input type="file" id="import-input-mob" accept=".json" style="display:none" onchange="importBackup(event)">
+      </div>
+      <div style="margin-top:10px;font-size:10px;color:var(--text3)">v2.0 — datos locales</div>
+    </div>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<div id="bottom-nav">
+  <button class="bnav-btn active" id="bnav-dashboard" onclick="goto('dashboard')"><span class="bnav-icon">📊</span>Inicio</button>
+  <button class="bnav-btn" id="bnav-preguntas" onclick="goto('preguntas')"><span class="bnav-icon">📚</span>Preguntas</button>
+  <button class="bnav-btn" id="bnav-simulacro" onclick="goto('simulacro')"><span class="bnav-icon">🧪</span>Simulacro</button>
+  <button class="bnav-btn" id="bnav-semanas" onclick="goto('semanas')"><span class="bnav-icon">📅</span>Semanas</button>
+  <button class="bnav-btn" id="bnav-estadisticas" onclick="goto('estadisticas')"><span class="bnav-icon">📈</span>Stats</button>
+</div>
+
+<!-- SIDEBAR -->
+<div id="sidebar">
+  <div class="logo">
+    <div class="logo-icon">🏥</div>
+    <div>
+      <div class="logo-text">MedResidencia</div>
+      <div class="logo-sub">¡Hola, Alejandra! 👋</div>
+    </div>
+  </div>
+  <nav>
+    <button class="nav-btn active" onclick="goto('dashboard')"><span class="nav-icon nav-dot">📊</span> Dashboard</button>
+    <button class="nav-btn" onclick="goto('preguntas')"><span class="nav-icon nav-dot">📚</span> Banco de Preguntas</button>
+    <button class="nav-btn" onclick="goto('simulacro')"><span class="nav-icon nav-dot">🧪</span> Simulacros</button>
+    <button class="nav-btn" onclick="goto('semanas')"><span class="nav-icon nav-dot">📅</span> Semanas</button>
+    <button class="nav-btn" onclick="goto('estadisticas')"><span class="nav-icon nav-dot">📈</span> Estadísticas</button>
+    <button class="nav-btn" onclick="goto('refuerzo')"><span class="nav-icon nav-dot">⚡</span> Modo Refuerzo</button>
+    <div style="height:1px;background:var(--border);margin:8px 4px"></div>
+    <button class="nav-btn" onclick="toggleTheme()" id="theme-btn"><span class="nav-icon">🌙</span> <span id="theme-label">Modo claro</span></button>
+    <button class="nav-btn" onclick="openColorPicker()"><span class="nav-icon">🎨</span> Color del tema</button>
+  </nav>
+  <div class="sidebar-footer">
+    MIR / ENARM / Residencia<br>
+    <span style="color:var(--accent);font-family:var(--mono);font-size:9px">v2.0 — datos locales</span>
+    <div style="margin-top:10px;display:flex;flex-direction:column;gap:5px">
+      <button onclick="exportBackup()" style="width:100%;padding:7px 10px;border-radius:6px;background:rgba(52,196,124,.12);color:var(--green);border:1px solid rgba(52,196,124,.25);font-size:11px;font-family:var(--sans);cursor:pointer;font-weight:500">💾 Exportar backup</button>
+      <button onclick="document.getElementById('import-input').click()" style="width:100%;padding:7px 10px;border-radius:6px;background:rgba(79,142,247,.1);color:var(--accent);border:1px solid rgba(79,142,247,.2);font-size:11px;font-family:var(--sans);cursor:pointer;font-weight:500">📂 Importar backup</button>
+      <input type="file" id="import-input" accept=".json" style="display:none" onchange="importBackup(event)">
+    </div>
+  </div>
+</div>
+
+<!-- PAGES -->
+<div id="main">
+
+<!-- DASHBOARD -->
+<div id="pg-dashboard" class="page active">
+  <div class="ph"><h1>Dashboard</h1><p>Tu rendimiento de un vistazo</p></div>
+  <div id="dash-alert"></div>
+  <div class="grid4 mb4" id="dash-stats"></div>
+  <div class="grid2 mt4">
+    <div class="card" id="dash-mastery"></div>
+    <div class="card" id="dash-weak"></div>
+  </div>
+  <div class="card mt4" id="dash-history"></div>
+  <div class="flex g3 fw mt4">
+    <button class="btn btn-p" onclick="goto('preguntas');showForm()">➕ Nueva pregunta</button>
+    <button class="btn btn-g" onclick="goto('simulacro')">🧪 Crear simulacro</button>
+    <button class="btn btn-g" onclick="goto('refuerzo')">⚡ Modo refuerzo</button>
+  </div>
+</div>
+
+<!-- PREGUNTAS -->
+<div id="pg-preguntas" class="page">
+  <div class="flex jcb aic mb4" style="flex-wrap:wrap;gap:12px">
+    <div class="ph" style="margin:0"><h1>Banco de Preguntas</h1><p id="q-count"></p></div>
+    <button class="btn btn-p" onclick="showForm()">➕ Nueva pregunta</button>
+  </div>
+  <!-- Filters -->
+  <div class="card card-sm mb4">
+    <div class="flex g3 aic fw">
+      <input id="q-search" placeholder="🔍  Buscar en enunciados..." style="flex:1;min-width:180px" oninput="renderPreguntas()">
+      <select id="q-cat" onchange="renderPreguntas()" style="width:auto;min-width:130px">
+        <option value="">Todas las categorías</option>
+        <option value="basicas">Básicas</option>
+        <option value="clinicas">Clínicas</option>
+        <option value="cultura">Cultura</option>
+      </select>
+      <select id="q-diff" onchange="renderPreguntas()" style="width:auto;min-width:130px">
+        <option value="">Todas las dificultades</option>
+        <option value="facil">Fácil</option>
+        <option value="medio">Medio</option>
+        <option value="dificil">Difícil</option>
+      </select>
+    </div>
+  </div>
+  <div id="q-list"></div>
+</div>
+
+<!-- SIMULACRO -->
+<div id="pg-simulacro" class="page">
+  <div id="sim-config"></div>
+  <div id="sim-active" style="display:none"></div>
+</div>
+
+<!-- SEMANAS -->
+<div id="pg-semanas" class="page">
+  <div class="ph"><h1>📅 Semanas</h1><p>Preguntas organizadas por semana de adición</p></div>
+  <div id="semanas-content"></div>
+</div>
+
+<!-- ESTADÍSTICAS -->
+<div id="pg-estadisticas" class="page">
+  <div class="ph"><h1>Estadísticas</h1><p>Tu progreso detallado</p></div>
+  <div id="stats-content"></div>
+</div>
+
+<!-- REFUERZO -->
+<div id="pg-refuerzo" class="page">
+  <div class="ph"><h1>Modo Refuerzo</h1><p>Estudio inteligente basado en tu rendimiento</p></div>
+  <div id="ref-content"></div>
+</div>
+
+</div><!-- /main -->
+
+<!-- MODAL PREGUNTA -->
+<div class="overlay" id="modal-q" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <h2 style="font-size:17px;font-weight:700;margin-bottom:22px" id="modal-title">Nueva Pregunta</h2>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<!-- TOASTS -->
+<div id="toasts"></div>
+
+<script>
+// ═══════════════════════════════════════
+// STORAGE (localStorage as DB)
+// ═══════════════════════════════════════
+const DB = {
+  get(k){ try{ return JSON.parse(localStorage.getItem('mr_'+k)||'null') }catch{return null} },
+  set(k,v){ localStorage.setItem('mr_'+k, JSON.stringify(v)) },
+  questions(){ return this.get('questions')||[] },
+  exams(){ return this.get('exams')||[] },
+  stats(){ return this.get('stats')||{} }, // questionId -> {seen,correct,wrong,ef,interval,nextReview}
+  saveQuestions(q){ this.set('questions',q) },
+  saveExams(e){ this.set('exams',e) },
+  saveStats(s){ this.set('stats',s) },
+};
+
+// ═══════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════
+const uid = ()=>Math.random().toString(36).slice(2)+Date.now().toString(36);
+const shuffle = a=>[...a].sort(()=>Math.random()-.5);
+const clamp = (n,a,b)=>Math.max(a,Math.min(b,n));
+const fmt2 = n=>String(n).padStart(2,'0');
+const fmtTime = s=>`${fmt2(Math.floor(s/60))}:${fmt2(s%60)}`;
+const catLabel = {basicas:'Básicas',clinicas:'Clínicas',cultura:'Cultura'};
+const catBadge = {basicas:'b-bas',clinicas:'b-cli',cultura:'b-cul'};
+const diffLabel = {facil:'Fácil',medio:'Medio',dificil:'Difícil'};
+const diffBadge = {facil:'b-fac',medio:'b-med',dificil:'b-dif'};
+const scoreColor = s=>s>=70?'var(--green)':s>=50?'var(--yellow)':'var(--red)';
+
+function toast(msg,type='info'){
+  const t=document.createElement('div');
+  t.className=`toast t-${type==='success'?'ok':type==='error'?'err':'info'}`;
+  t.textContent=msg;
+  document.getElementById('toasts').appendChild(t);
+  setTimeout(()=>t.remove(),3000);
+}
+
+// ═══════════════════════════════════════
+// SM-2 (repetición espaciada)
+// ═══════════════════════════════════════
+function sm2Update(stats, isCorrect){
+  let {ef=2.5, interval=1, seen=0, correct=0, wrong=0} = stats||{};
+  const q = isCorrect?4:1;
+  ef = Math.max(1.3, ef + 0.1 - (5-q)*(0.08+(5-q)*0.02));
+  if(!isCorrect){ interval=1; }
+  else if(seen===0){ interval=1; }
+  else if(seen===1){ interval=6; }
+  else { interval=Math.round(interval*ef); }
+  const nextReview = new Date();
+  nextReview.setDate(nextReview.getDate()+interval);
+  return {
+    seen: seen+1, correct: correct+(isCorrect?1:0), wrong: wrong+(isCorrect?0:1),
+    ef, interval, nextReview: nextReview.toISOString().split('T')[0],
+    lastResult: isCorrect?'correct':'wrong'
+  };
+}
+
+function todayStr(){ return new Date().toISOString().split('T')[0]; }
+function isDue(s){ return !s || !s.nextReview || s.nextReview <= todayStr(); }
+
+function updateSliderFill(el){
+  const min=parseFloat(el.min)||0;
+  const max=parseFloat(el.max)||100;
+  const val=parseFloat(el.value)||0;
+  const pct=((val-min)/(max-min)*100).toFixed(1);
+  el.style.background=`linear-gradient(to right, var(--accent) 0%, var(--accent) ${pct}%, var(--border2) ${pct}%, var(--border2) 100%)`;
+}
+
+// ═══════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════
+function goto(page){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('pg-'+page).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b=>{
+    if(b.textContent.trim().toLowerCase().includes(
+      {dashboard:'dashboard',preguntas:'banco',simulacro:'simulacro',estadisticas:'estad',refuerzo:'refuerzo',semanas:'semana'}[page]||page
+    )) b.classList.add('active');
+  });
+  // Update bottom nav
+  document.querySelectorAll('.bnav-btn').forEach(b=>b.classList.remove('active'));
+  const bnavBtn=document.getElementById('bnav-'+page);
+  if(bnavBtn) bnavBtn.classList.add('active');
+  // Scroll to top
+  document.getElementById('main').scrollTo(0,0);
+  if(page==='dashboard') renderDashboard();
+  if(page==='preguntas') renderPreguntas();
+  if(page==='simulacro') renderSimConfig();
+  if(page==='estadisticas') renderEstadisticas();
+  if(page==='refuerzo') renderRefuerzo();
+  if(page==='semanas') renderSemanas();
+}
+
+function openDrawer(){
+  document.getElementById('mob-drawer').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeDrawer(){
+  document.getElementById('mob-drawer').classList.remove('open');
+  document.body.style.overflow='';
+}
+
+// ═══════════════════════════════════════
+// MODAL
+// ═══════════════════════════════════════
+function closeModal(){ document.getElementById('modal-q').classList.remove('open'); }
+function openModal(title, html){
+  document.getElementById('modal-title').textContent=title;
+  document.getElementById('modal-body').innerHTML=html;
+  document.getElementById('modal-q').classList.add('open');
+}
+
+// ═══════════════════════════════════════
+// QUESTIONS CRUD
+// ═══════════════════════════════════════
+let editingQId = null;
+
+function showForm(id=null){
+  editingQId=id;
+  _currentImgBase64=null; // reset each time form opens
+  let q={statement:'',options:[{id:'a',text:''},{id:'b',text:''},{id:'c',text:''},{id:'d',text:''}],correct_id:'a',category:'basicas',subcategory:'',difficulty:'medio',explanation:'',image:null};
+  if(id){
+    q=DB.questions().find(x=>x.id===id)||q;
+  }
+  openModal(id?'Editar Pregunta':'Nueva Pregunta', formHTML(q));
+}
+
+function formHTML(q){
+  const opts=q.options||[];
+  return `
+  <div style="display:flex;flex-direction:column;gap:14px">
+    <div>
+      <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:5px">Enunciado *</label>
+      <textarea id="f-statement" rows="3" style="resize:vertical">${q.statement||''}</textarea>
+    </div>
+    <div>
+      <div class="flex jcb aic" style="margin-bottom:8px">
+        <label style="font-size:12px;color:var(--text2)">Opciones (radio = correcta) *</label>
+        ${opts.length<5?`<button type="button" class="btn btn-sm btn-g" onclick="addOption()">+ Opción</button>`:''}
+      </div>
+      <div id="opts-container" style="display:flex;flex-direction:column;gap:7px">
+        ${opts.map((o,i)=>optRow(o,q.correct_id,i,opts.length)).join('')}
+      </div>
+    </div>
+    <div class="grid3">
+      <div>
+        <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:5px">Categoría *</label>
+        <select id="f-cat">
+          ${['basicas','clinicas','cultura'].map(c=>`<option value="${c}" ${q.category===c?'selected':''}>${catLabel[c]}</option>`).join('')}
+        </select>
+      </div>
+      <div>
+        <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:5px">Dificultad *</label>
+        <select id="f-diff">
+          ${['facil','medio','dificil'].map(d=>`<option value="${d}" ${q.difficulty===d?'selected':''}>${diffLabel[d]}</option>`).join('')}
+        </select>
+      </div>
+      <div>
+        <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:5px">Subcategoría</label>
+        <input id="f-sub" value="${q.subcategory||''}" placeholder="cardiología...">
+      </div>
+    </div>
+    <div>
+      <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:5px">Explicación de la respuesta</label>
+      <textarea id="f-exp" rows="2" style="resize:vertical">${q.explanation||''}</textarea>
+    </div>
+    <!-- IMAGE SECTION -->
+    <div style="border:1px solid var(--border);border-radius:var(--r);overflow:hidden">
+      <button type="button" onclick="toggleImgSection()" style="width:100%;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;background:var(--bg3);border:none;cursor:pointer;text-align:left">
+        <div class="flex aic g2">
+          <span>🖼️</span>
+          <span style="font-size:13px;font-weight:500;color:var(--text)">Imagen de referencia</span>
+          <span style="font-size:11px;color:var(--text3)">(flashcard opcional)</span>
+        </div>
+        <span id="img-section-arrow" style="color:var(--text3);font-size:12px">▼</span>
+      </button>
+      <div id="img-section" style="display:${q.image?'block':'none'};padding:14px;border-top:1px solid var(--border)">
+        <!-- Drop zone -->
+        <div id="img-dropzone" onclick="document.getElementById('img-file-input').click()"
+          ondragover="event.preventDefault();this.style.borderColor='var(--accent)'"
+          ondragleave="this.style.borderColor='var(--border2)'"
+          ondrop="handleImgDrop(event)"
+          style="border:2px dashed var(--border2);border-radius:var(--r);padding:20px;text-align:center;cursor:pointer;transition:border-color .2s;${q.image?'display:none':''}">
+          <div style="font-size:28px;margin-bottom:6px">📁</div>
+          <p style="font-size:13px;color:var(--text2);font-weight:500">Haz clic o arrastra una imagen</p>
+          <p style="font-size:11px;color:var(--text3);margin-top:3px">PNG, JPG, GIF, WebP — máx. 5 MB</p>
+        </div>
+        <input type="file" id="img-file-input" accept="image/*" style="display:none" onchange="handleImgFile(event)">
+        <!-- Preview -->
+        <div id="img-preview" style="${q.image?'':'display:none'}">
+          <div style="position:relative;display:inline-block;max-width:100%">
+            <img id="img-preview-el" src="${q.image||''}" style="max-width:100%;max-height:280px;border-radius:var(--r);display:block;border:1px solid var(--border)">
+            <button type="button" onclick="removeImg()" style="position:absolute;top:6px;right:6px;width:26px;height:26px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;font-size:14px;display:flex;align-items:center;justify-content:center;border:none;cursor:pointer">×</button>
+          </div>
+          <p style="font-size:11px;color:var(--text3);margin-top:6px">Haz clic en × para eliminar · Haz clic en la zona para cambiar</p>
+          <button type="button" onclick="document.getElementById('img-file-input').click()" style="margin-top:6px;font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer">🔄 Cambiar imagen</button>
+        </div>
+      </div>
+    </div>
+    <div class="flex g3">
+      <button class="btn btn-p" onclick="saveQuestion()">${editingQId?'Actualizar':'Crear pregunta'}</button>
+      <button class="btn btn-g" onclick="closeModal()">Cancelar</button>
+    </div>
+  </div>`;
+}
+
+function optRow(o, correctId, i, total){
+  return `<div class="flex aic g2" id="opt-row-${o.id}">
+    <input type="radio" name="correct" value="${o.id}" ${o.id===correctId?'checked':''} style="width:auto;accentColor:var(--green)" title="Marcar como correcta">
+    <span style="font-size:11px;font-family:var(--mono);color:var(--text3);width:14px">${o.id.toUpperCase()}</span>
+    <input id="opt-${o.id}" value="${o.text}" placeholder="Opción ${o.id.toUpperCase()}" style="flex:1">
+    ${total>4?`<button type="button" onclick="removeOption('${o.id}')" style="color:var(--text3);font-size:16px;padding:0 4px;flex-shrink:0">×</button>`:''}
+  </div>`;
+}
+
+function addOption(){
+  const ids=['a','b','c','d','e'];
+  const container=document.getElementById('opts-container');
+  const current=container.querySelectorAll('[id^="opt-row-"]').length;
+  if(current>=5){toast('Máximo 5 opciones','error');return;}
+  const newId=ids[current];
+  const div=document.createElement('div');
+  div.innerHTML=optRow({id:newId,text:''},null,current,current+1);
+  container.appendChild(div.firstElementChild);
+  // refresh remove buttons
+  container.querySelectorAll('[id^="opt-row-"]').forEach((row,i,all)=>{
+    const removeBtn=row.querySelector('button');
+    if(all.length>4&&!removeBtn){
+      const id=row.id.replace('opt-row-','');
+      const inp=row.querySelector('input[type=text],input:not([type])');
+      const span=row.querySelector('span');
+      // add remove button
+      const b=document.createElement('button');
+      b.type='button';b.onclick=()=>removeOption(id);
+      b.style.cssText='color:var(--text3);font-size:16px;padding:0 4px;flex-shrink:0';
+      b.textContent='×';
+      row.appendChild(b);
+    }
+  });
+}
+
+function removeOption(id){
+  const row=document.getElementById('opt-row-'+id);
+  if(row) row.remove();
+}
+
+let _currentImgBase64 = null; // holds base64 while form is open
+
+function toggleImgSection(){
+  const sec=document.getElementById('img-section');
+  const arrow=document.getElementById('img-section-arrow');
+  const open=sec.style.display==='none';
+  sec.style.display=open?'block':'none';
+  arrow.textContent=open?'▲':'▼';
+}
+
+function handleImgFile(event){
+  const file=event.target.files[0];
+  if(file) loadImgFile(file);
+}
+
+function handleImgDrop(event){
+  event.preventDefault();
+  document.getElementById('img-dropzone').style.borderColor='var(--border2)';
+  const file=event.dataTransfer.files[0];
+  if(file && file.type.startsWith('image/')) loadImgFile(file);
+  else toast('Solo se aceptan imágenes','error');
+}
+
+function loadImgFile(file){
+  if(file.size>5*1024*1024){ toast('La imagen supera 5 MB','error'); return; }
+  const reader=new FileReader();
+  reader.onload=e=>{
+    _currentImgBase64=e.target.result;
+    const prev=document.getElementById('img-preview');
+    const drop=document.getElementById('img-dropzone');
+    const el=document.getElementById('img-preview-el');
+    if(el) el.src=_currentImgBase64;
+    if(prev) prev.style.display='block';
+    if(drop) drop.style.display='none';
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeImg(){
+  _currentImgBase64=null;
+  const prev=document.getElementById('img-preview');
+  const drop=document.getElementById('img-dropzone');
+  const el=document.getElementById('img-preview-el');
+  if(el) el.src='';
+  if(prev) prev.style.display='none';
+  if(drop) drop.style.display='block';
+  document.getElementById('img-file-input').value='';
+}
+
+function saveQuestion(){
+  const statement=document.getElementById('f-statement').value.trim();
+  if(!statement){toast('El enunciado es requerido','error');return;}
+
+  const radios=document.querySelectorAll('input[name="correct"]');
+  let correctId='';
+  radios.forEach(r=>{if(r.checked) correctId=r.value;});
+
+  const optInputs=document.querySelectorAll('[id^="opt-"]');
+  const options=[];
+  optInputs.forEach(inp=>{
+    if(inp.id.startsWith('opt-')&&inp.id!=='opts-container'){
+      const id=inp.id.replace('opt-','');
+      if(id.length===1) options.push({id,text:inp.value.trim()});
+    }
+  });
+
+  if(options.length<4){toast('Se requieren al menos 4 opciones','error');return;}
+  if(options.some(o=>!o.text)){toast('Completa todas las opciones','error');return;}
+  if(!correctId){toast('Selecciona la respuesta correcta','error');return;}
+
+  const q={
+    id: editingQId||uid(),
+    statement,options,correct_id:correctId,
+    category:document.getElementById('f-cat').value,
+    subcategory:document.getElementById('f-sub').value.trim(),
+    difficulty:document.getElementById('f-diff').value,
+    explanation:document.getElementById('f-exp').value.trim(),
+    image: _currentImgBase64 !== null ? _currentImgBase64 : (editingQId?(DB.questions().find(x=>x.id===editingQId)||{}).image||null:null),
+    created_at: editingQId? (DB.questions().find(x=>x.id===editingQId)||{}).created_at||new Date().toISOString() : new Date().toISOString(),
+  };
+
+  const qs=DB.questions();
+  if(editingQId){
+    const idx=qs.findIndex(x=>x.id===editingQId);
+    qs[idx]=q;
+    toast('Pregunta actualizada','success');
+  } else {
+    qs.push(q);
+    // Init stats
+    const stats=DB.stats();
+    if(!stats[q.id]) stats[q.id]={seen:0,correct:0,wrong:0,ef:2.5,interval:1,nextReview:todayStr()};
+    DB.saveStats(stats);
+    toast('Pregunta creada','success');
+  }
+  DB.saveQuestions(qs);
+  closeModal();
+  renderPreguntas();
+}
+
+function deleteQuestion(id){
+  if(!confirm('¿Eliminar esta pregunta?')) return;
+  DB.saveQuestions(DB.questions().filter(q=>q.id!==id));
+  toast('Pregunta eliminada','success');
+  renderPreguntas();
+}
+
+// ═══════════════════════════════════════
+// RENDER PREGUNTAS
+// ═══════════════════════════════════════
+function renderPreguntas(){
+  const qs=DB.questions();
+  const search=(document.getElementById('q-search')||{value:''}).value.toLowerCase();
+  const cat=(document.getElementById('q-cat')||{value:''}).value;
+  const diff=(document.getElementById('q-diff')||{value:''}).value;
+  const stats=DB.stats();
+
+  let filtered=qs.filter(q=>{
+    if(cat&&q.category!==cat) return false;
+    if(diff&&q.difficulty!==diff) return false;
+    if(search&&!q.statement.toLowerCase().includes(search)) return false;
+    return true;
+  });
+
+  document.getElementById('q-count').textContent=`${filtered.length} / ${qs.length} preguntas`;
+
+  const list=document.getElementById('q-list');
+  if(!filtered.length){
+    list.innerHTML=`<div class="empty"><div style="font-size:32px">📚</div><h3>${search||cat||diff?'Sin resultados':'Sin preguntas aún'}</h3><p style="font-size:13px">${search||cat||diff?'Prueba otros filtros':'Crea tu primera pregunta'}</p>${!search&&!cat&&!diff?`<button class="btn btn-p" onclick="showForm()">➕ Nueva pregunta</button>`:''}</div>`;
+    return;
+  }
+
+  list.innerHTML=filtered.map(q=>{
+    const s=stats[q.id]||{};
+    const acc=s.seen>0?Math.round(s.correct/s.seen*100):null;
+    return `
+    <div class="qcard mb4" id="qcard-${q.id}">
+      <div class="flex jcb aic g3" style="flex-wrap:wrap">
+        <div style="flex:1;min-width:0">
+          <div class="flex g2 fw mb-2" style="margin-bottom:6px">
+            <span class="badge ${catBadge[q.category]}">${catLabel[q.category]}</span>
+            <span class="badge ${diffBadge[q.difficulty]}">${diffLabel[q.difficulty]}</span>
+            ${q.subcategory?`<span class="tag">${q.subcategory}</span>`:''}
+            ${q.image?`<span class="tag" style="color:var(--accent);border-color:rgba(79,142,247,.3)">🖼️ imagen</span>`:''}
+            ${acc!==null?`<span style="font-size:11px;font-family:var(--mono);color:${acc>=70?'var(--green)':acc>=50?'var(--yellow)':'var(--red)'}">${acc}% (${s.seen}×)</span>`:''}
+          </div>
+          <p style="font-size:13px;line-height:1.55">${q.statement.slice(0,150)}${q.statement.length>150?'…':''}</p>
+        </div>
+        <div class="flex g2">
+          <button class="btn btn-g btn-sm" onclick="showForm('${q.id}')">✏️</button>
+          <button class="btn btn-r btn-sm" onclick="deleteQuestion('${q.id}')">🗑</button>
+        </div>
+      </div>
+      <button onclick="toggleQDetail('${q.id}')" style="margin-top:9px;font-size:11px;color:var(--text3);display:flex;align-items:center;gap:4px;background:none;border:none;cursor:pointer">
+        <span id="qdetail-arrow-${q.id}">▼</span> Ver opciones
+      </button>
+      <div id="qdetail-${q.id}" style="display:none;margin-top:10px">
+        ${(q.options||[]).map(o=>`
+          <div style="display:flex;gap:8px;align-items:center;padding:7px 10px;border-radius:6px;margin-bottom:5px;background:${o.id===q.correct_id?'rgba(52,196,124,.1)':'var(--bg3)'};border:1px solid ${o.id===q.correct_id?'rgba(52,196,124,.25)':'transparent'}">
+            <span style="font-size:11px;font-family:var(--mono);width:14px;color:${o.id===q.correct_id?'var(--green)':'var(--text3)'}">${o.id.toUpperCase()}</span>
+            <span style="font-size:13px;flex:1;color:${o.id===q.correct_id?'var(--text)':'var(--text2)'}">${o.text}</span>
+            ${o.id===q.correct_id?'<span style="font-size:11px;color:var(--green);font-weight:700">✓</span>':''}
+          </div>`).join('')}
+        ${q.explanation?`<div style="margin-top:8px;padding:9px 12px;background:rgba(79,142,247,.08);border:1px solid rgba(79,142,247,.15);border-radius:6px;font-size:12px;color:var(--text2);line-height:1.55"><strong style="color:var(--accent)">Explicación: </strong>${q.explanation}</div>`:''}
+        ${q.image?`
+        <div style="margin-top:10px">
+          <p style="font-size:11px;color:var(--text3);margin-bottom:6px">🖼️ Imagen de referencia</p>
+          <img src="${q.image}" style="max-width:100%;max-height:320px;border-radius:var(--r);border:1px solid var(--border);display:block;cursor:pointer" onclick="openImgModal('${q.id}')" title="Clic para ampliar">
+        </div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleQDetail(id){
+  const el=document.getElementById('qdetail-'+id);
+  const ar=document.getElementById('qdetail-arrow-'+id);
+  const open=el.style.display==='none';
+  el.style.display=open?'block':'none';
+  ar.textContent=open?'▲':'▼';
+}
+
+// ═══════════════════════════════════════
+// SIMULACRO
+// ═══════════════════════════════════════
+let activeExam=null; // {id,name,questions,answers,marked,startTime,timerInterval}
+
+function renderSimConfig(){
+  document.getElementById('sim-active').style.display='none';
+  document.getElementById('sim-config').style.display='';
+  document.getElementById('sim-config').innerHTML=`
+  <div style="max-width:620px;margin:0 auto">
+    <div class="ph"><h1>Crear Simulacro</h1><p>Configura tu sesión de práctica</p></div>
+    <div class="card mb4">
+      <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:5px">Nombre (opcional)</label>
+      <input id="sim-name" placeholder="Ej: Repaso semana 3 — Cardiología">
+    </div>
+    <div class="card mb4">
+      <div class="flex jcb aic" style="margin-bottom:18px">
+        <label style="font-size:13px;font-weight:600">Número de preguntas</label>
+        <span id="sim-n-val" style="font-size:24px;font-weight:700;font-family:var(--mono);color:var(--accent)">20</span>
+      </div>
+      <div style="position:relative;padding:0 2px">
+        <input type="range" id="sim-n" min="5" max="100" step="5" value="20"
+          oninput="document.getElementById('sim-n-val').textContent=this.value;updateSliderFill(this)"
+          style="width:100%;accentColor:var(--accent);background:none;border:none;padding:0;cursor:pointer;display:block;margin:0">
+      </div>
+      <div class="flex jcb mt2" style="padding:0 2px">
+        <span style="font-size:11px;font-family:var(--mono);color:var(--text3)">5</span>
+        ${[20,40,60].map(n=>`<button onclick="document.getElementById('sim-n').value=${n};document.getElementById('sim-n-val').textContent=${n};updateSliderFill(document.getElementById('sim-n'))" style="font-size:11px;font-family:var(--mono);color:var(--text3);background:none;border:none;cursor:pointer">${n}</button>`).join('')}
+        <span style="font-size:11px;font-family:var(--mono);color:var(--text3)">100</span>
+      </div>
+    </div>
+    <div class="card mb4">
+      <div class="mb4"><label style="font-size:13px;font-weight:600">Categorías <span style="font-weight:400;font-size:11px;color:var(--text3)">(vacío = todas)</span></label></div>
+      <div class="flex g2 fw">
+        ${['basicas','clinicas','cultura'].map(c=>`<button class="badge ${catBadge[c]}" id="cat-btn-${c}" onclick="toggleSimFilter('cat','${c}')" style="cursor:pointer;padding:7px 14px;font-size:12px;opacity:.35;border:1px solid transparent;transition:all .15s">${catLabel[c]}</button>`).join('')}
+      </div>
+    </div>
+    <div class="card mb4">
+      <div class="mb4"><label style="font-size:13px;font-weight:600">Dificultad <span style="font-weight:400;font-size:11px;color:var(--text3)">(vacío = todas)</span></label></div>
+      <div class="flex g2 fw">
+        ${['facil','medio','dificil'].map(d=>`<button class="badge ${diffBadge[d]}" id="diff-btn-${d}" onclick="toggleSimFilter('diff','${d}')" style="cursor:pointer;padding:7px 14px;font-size:12px;opacity:.35;border:1px solid transparent;transition:all .15s">${diffLabel[d]}</button>`).join('')}
+      </div>
+    </div>
+    <div class="card mb4" id="sub-filter-card">
+      <div class="mb4"><label style="font-size:13px;font-weight:600">Subcategorías <span style="font-weight:400;font-size:11px;color:var(--text3)">(vacío = todas)</span></label></div>
+      <div class="flex g2 fw" id="sub-filter-btns">${renderSubcategoryFilterBtns()}</div>
+    </div>
+    <div class="card mb4" id="week-filter-card">
+      <div class="mb4"><label style="font-size:13px;font-weight:600">📅 Semana de preguntas <span style="font-weight:400;font-size:11px;color:var(--text3)">(vacío = todas)</span></label></div>
+      <div class="flex g2 fw" id="week-filter-btns">${renderWeekFilterBtns()}</div>
+    </div>
+    <div class="card mb4">
+      <div class="mb4"><label style="font-size:13px;font-weight:600">Modo</label></div>
+      <div class="flex g3 fw">
+        <button class="mode-card sel" id="mode-random" onclick="selMode('random')"><h4>🔀 Aleatorio</h4><p>Preguntas al azar</p></button>
+        <button class="mode-card" id="mode-reinforcement" onclick="selMode('reinforcement')"><h4>⚡ Refuerzo</h4><p>Las que más fallas</p></button>
+        <button class="mode-card" id="mode-spaced" onclick="selMode('spaced')"><h4>🕐 Espaciado</h4><p>Las que tocan hoy (SM-2)</p></button>
+      </div>
+    </div>
+    <div class="card mb4">
+      <div class="flex jcb aic mb4">
+        <div>
+          <label style="font-size:13px;font-weight:600">⏳ Tiempo límite</label>
+          <p style="font-size:11px;color:var(--text3);margin-top:2px">El simulacro se entrega automáticamente al agotarse</p>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text2)">
+          <span id="time-toggle-label">Desactivado</span>
+          <div id="time-toggle" onclick="toggleTimeLimit()" style="width:40px;height:22px;border-radius:11px;background:var(--border2);cursor:pointer;position:relative;transition:background .2s;flex-shrink:0">
+            <div id="time-knob" style="width:18px;height:18px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.3)"></div>
+          </div>
+        </label>
+      </div>
+      <div id="time-config" style="display:none">
+        <div class="flex aic g3 mb3">
+          <span style="font-size:13px;color:var(--text2)">Duración total:</span>
+          <div class="flex aic g2">
+            <button onclick="adjTime(-10)" style="width:28px;height:28px;border-radius:6px;background:var(--bg3);border:1px solid var(--border);font-size:16px;cursor:pointer;color:var(--text)">−</button>
+            <span id="time-display" style="font-size:22px;font-weight:700;font-family:var(--mono);color:var(--accent);min-width:70px;text-align:center">60 min</span>
+            <button onclick="adjTime(10)" style="width:28px;height:28px;border-radius:6px;background:var(--bg3);border:1px solid var(--border);font-size:16px;cursor:pointer;color:var(--text)">+</button>
+          </div>
+        </div>
+        <div class="flex g2 fw">
+          ${[15,30,45,60,90,120].map(m=>`<button onclick="setTimeMins(${m})" style="padding:5px 12px;border-radius:6px;font-size:12px;font-family:var(--mono);background:var(--bg3);border:1px solid var(--border);color:var(--text2);cursor:pointer">${m}m</button>`).join('')}
+        </div>
+      </div>
+    </div>
+    <button class="btn btn-p btn-lg w100" onclick="startExam()">Iniciar simulacro</button>
+  </div>`;
+  simFilters={cats:[],diffs:[],subs:[],weeks:[],mode:'random',timeLimitMins:0};
+}
+
+let simFilters={cats:[],diffs:[],subs:[],weeks:[],mode:'random',timeLimitMins:0};
+
+function getWeekNumber(isoDate){
+  const qs=DB.questions();
+  if(!qs.length||!isoDate) return 1;
+  const dates=qs.map(q=>q.created_at||'').filter(Boolean).sort();
+  const first=new Date(dates[0]);
+  const d=new Date(isoDate);
+  const diffMs=d-first;
+  return Math.max(1,Math.floor(diffMs/(7*24*60*60*1000))+1);
+}
+function getQuestionWeek(q){ return getWeekNumber(q.created_at); }
+function getAllWeeks(){
+  const qs=DB.questions();
+  const weeks=new Set();
+  qs.forEach(q=>weeks.add(getQuestionWeek(q)));
+  return [...weeks].sort((a,b)=>a-b);
+}
+function getAllSubcategories(){
+  const qs=DB.questions();
+  const subs=new Set();
+  qs.forEach(q=>{ if(q.subcategory&&q.subcategory.trim()) subs.add(q.subcategory.trim()); });
+  return [...subs].sort();
+}
+function renderSubcategoryFilterBtns(){
+  const subs=getAllSubcategories();
+  if(!subs.length) return `<span style="font-size:12px;color:var(--text3)">Aún no hay subcategorías en tus preguntas</span>`;
+  return subs.map(s=>{
+    const sid='sub-btn-'+s.replace(/[^a-zA-Z0-9]/g,'_');
+    return `<button class="tag" id="${sid}" data-sub="${s}" onclick="toggleSimSub(this,'${s.replace(/'/g,"\\'")}')" style="cursor:pointer;padding:6px 12px;font-size:12px;opacity:.45;border:1px solid transparent;transition:all .15s;font-family:var(--sans)">${s}</button>`;
+  }).join('');
+}
+function renderWeekFilterBtns(){
+  const weeks=getAllWeeks();
+  if(!weeks.length) return `<span style="font-size:12px;color:var(--text3)">Aún no hay preguntas</span>`;
+  const qs=DB.questions();
+  return weeks.map(w=>{
+    const count=qs.filter(q=>getQuestionWeek(q)===w).length;
+    return `<button id="week-btn-${w}" onclick="toggleSimWeek(this,${w})" style="cursor:pointer;padding:7px 14px;font-size:12px;border-radius:20px;border:1px solid transparent;background:rgba(124,95,232,.12);color:#a78bfa;font-weight:600;opacity:.4;transition:all .15s;font-family:var(--sans)">Semana ${w} <span style="font-size:10px;opacity:.7">(${count})</span></button>`;
+  }).join('');
+}
+function toggleSimSub(btn,sub){
+  const idx=simFilters.subs.indexOf(sub);
+  if(idx>=0){ simFilters.subs.splice(idx,1); btn.style.opacity='.45'; btn.style.border='1px solid transparent'; }
+  else { simFilters.subs.push(sub); btn.style.opacity='1'; btn.style.border='1px solid currentColor'; }
+}
+function toggleSimWeek(btn,w){
+  const idx=simFilters.weeks.indexOf(w);
+  if(idx>=0){ simFilters.weeks.splice(idx,1); btn.style.opacity='.4'; btn.style.border='1px solid transparent'; }
+  else { simFilters.weeks.push(w); btn.style.opacity='1'; btn.style.border='1px solid currentColor'; }
+}
+
+function toggleSimFilter(type,val){
+  const arr=type==='cat'?simFilters.cats:simFilters.diffs;
+  const btn=document.getElementById((type==='cat'?'cat':'diff')+'-btn-'+val);
+  const idx=arr.indexOf(val);
+  if(idx>=0){ arr.splice(idx,1); btn.style.opacity='.35'; btn.style.border='1px solid transparent'; }
+  else { arr.push(val); btn.style.opacity='1'; btn.style.border='1px solid currentColor'; }
+}
+function selMode(m){
+  simFilters.mode=m;
+  ['random','reinforcement','spaced'].forEach(x=>{
+    const b=document.getElementById('mode-'+x);
+    if(b){ b.classList.toggle('sel',x===m); }
+  });
+}
+
+let _timeLimitActive=false;
+let _timeMins=60;
+function toggleTimeLimit(){
+  _timeLimitActive=!_timeLimitActive;
+  const tog=document.getElementById('time-toggle');
+  const knob=document.getElementById('time-knob');
+  const label=document.getElementById('time-toggle-label');
+  const cfg=document.getElementById('time-config');
+  if(_timeLimitActive){
+    tog.style.background='var(--accent)';
+    knob.style.left='20px';
+    label.textContent='Activado';
+    cfg.style.display='block';
+    simFilters.timeLimitMins=_timeMins;
+  } else {
+    tog.style.background='var(--border2)';
+    knob.style.left='2px';
+    label.textContent='Desactivado';
+    cfg.style.display='none';
+    simFilters.timeLimitMins=0;
+  }
+}
+function adjTime(delta){
+  _timeMins=Math.max(5,Math.min(240,_timeMins+delta));
+  simFilters.timeLimitMins=_timeMins;
+  document.getElementById('time-display').textContent=_timeMins+' min';
+}
+function setTimeMins(m){
+  _timeMins=m;
+  simFilters.timeLimitMins=m;
+  document.getElementById('time-display').textContent=m+' min';
+}
+
+function startExam(){
+  let qs=DB.questions();
+  const stats=DB.stats();
+  if(simFilters.cats.length) qs=qs.filter(q=>simFilters.cats.includes(q.category));
+  if(simFilters.diffs.length) qs=qs.filter(q=>simFilters.diffs.includes(q.difficulty));
+  if(simFilters.subs.length) qs=qs.filter(q=>simFilters.subs.includes((q.subcategory||'').trim()));
+  if(simFilters.weeks.length) qs=qs.filter(q=>simFilters.weeks.includes(getQuestionWeek(q)));
+
+  if(simFilters.mode==='reinforcement'){
+    qs=qs.filter(q=>stats[q.id]&&stats[q.id].seen>0).sort((a,b)=>{
+      const accA=(stats[a.id]||{correct:0,seen:1});
+      const accB=(stats[b.id]||{correct:0,seen:1});
+      return (accA.correct/accA.seen)-(accB.correct/accB.seen);
+    });
+  } else if(simFilters.mode==='spaced'){
+    qs=qs.filter(q=>isDue(stats[q.id])).sort((a,b)=>{
+      const da=(stats[a.id]||{}).nextReview||'0';
+      const db=(stats[b.id]||{}).nextReview||'0';
+      return da<db?-1:1;
+    });
+  }
+
+  const n=parseInt(document.getElementById('sim-n').value)||20;
+  const selected=shuffle(qs).slice(0,n);
+
+  if(!selected.length){ toast('No hay preguntas con esos filtros','error'); return; }
+
+  const name=document.getElementById('sim-name').value.trim()||`Simulacro ${new Date().toLocaleDateString('es-MX')}`;
+  activeExam={
+    id:uid(), name, mode:simFilters.mode,
+    questions:selected, answers:{}, marked:{}, currentIdx:0,
+    startTime:Date.now(), elapsed:0,
+    timeLimitSecs: simFilters.timeLimitMins>0 ? simFilters.timeLimitMins*60 : 0,
+  };
+  renderActiveExam();
+}
+
+let examTimerInterval=null;
+function renderActiveExam(){
+  document.getElementById('sim-config').style.display='none';
+  document.getElementById('sim-active').style.display='';
+  if(examTimerInterval) clearInterval(examTimerInterval);
+  examTimerInterval=setInterval(()=>{
+    activeExam.elapsed=Math.floor((Date.now()-activeExam.startTime)/1000);
+    const el=document.getElementById('exam-timer');
+    const bar=document.getElementById('time-bar');
+    if(!el) return;
+
+    if(activeExam.timeLimitSecs>0){
+      const remaining=activeExam.timeLimitSecs-activeExam.elapsed;
+      if(remaining<=0){
+        clearInterval(examTimerInterval);
+        toast('⏰ ¡Tiempo agotado! Entregando simulacro...','error');
+        setTimeout(()=>finishExam(true),1200);
+        return;
+      }
+      el.textContent=fmtTime(remaining);
+      const pct=(remaining/activeExam.timeLimitSecs)*100;
+      if(bar){
+        bar.style.width=pct+'%';
+        bar.style.background=remaining<60?'var(--red)':remaining<120?'var(--yellow)':'var(--green)';
+      }
+      // Warning colors on timer
+      el.style.color=remaining<60?'var(--red)':remaining<120?'var(--yellow)':'var(--text)';
+      if(remaining===120) toast('⚠️ 2 minutos restantes','error');
+      if(remaining===60)  toast('⚠️ ¡1 minuto restante!','error');
+    } else {
+      el.textContent=fmtTime(activeExam.elapsed);
+    }
+  },1000);
+  drawExam();
+}
+
+function drawExam(){
+  if(!activeExam) return;
+  const {questions,answers,currentIdx,name,elapsed,timeLimitSecs}=activeExam;
+  const q=questions[currentIdx];
+  const total=questions.length;
+  const answered=Object.keys(answers).length;
+  const container=document.getElementById('sim-active');
+  const isCountdown=timeLimitSecs>0;
+  const remaining=isCountdown?Math.max(0,timeLimitSecs-elapsed):0;
+  const timerColor=isCountdown?(remaining<60?'var(--red)':remaining<120?'var(--yellow)':'var(--text)'):'var(--text)';
+  const timerVal=isCountdown?fmtTime(remaining):fmtTime(elapsed);
+  const timePct=isCountdown?(remaining/timeLimitSecs*100):null;
+
+  container.innerHTML=`
+  <div style="max-width:760px;margin:0 auto">
+    <div class="flex jcb aic g3 mb4" style="flex-wrap:wrap">
+      <div><div style="font-size:15px;font-weight:600">${name}</div><div style="font-size:12px;color:var(--text3);margin-top:2px">${answered}/${total} respondidas · <span style="color:var(--text3)">${total-answered} pendientes</span>${Object.keys(activeExam.marked).length>0?` · <span style="color:var(--yellow)">⚑ ${Object.keys(activeExam.marked).filter(k=>activeExam.marked[k]).length} marcadas</span>`:''}</div></div>
+      <div class="flex aic g3">
+        <div class="flex aic g2" style="background:var(--bg2);border:1px solid var(--border);padding:6px 14px;border-radius:6px;gap:8px">
+          <span>${isCountdown?'⏳':'⏱'}</span>
+          <span id="exam-timer" style="font-family:var(--mono);font-size:16px;font-weight:700;color:${timerColor}">${timerVal}</span>
+          ${isCountdown?`<span style="font-size:10px;color:var(--text3);margin-left:2px">restante</span>`:''}
+        </div>
+        <button class="btn btn-g btn-sm" onclick="finishExam()">🏁 Terminar</button>
+      </div>
+    </div>
+    ${isCountdown?`
+    <div style="margin-bottom:16px">
+      <div class="pbar-wrap" style="height:6px;border-radius:4px">
+        <div id="time-bar" class="pbar" style="width:${timePct}%;background:${remaining<60?'var(--red)':remaining<120?'var(--yellow)':'var(--green)'};transition:width 1s linear,background .5s"></div>
+      </div>
+      <div style="font-size:10px;color:var(--text3);margin-top:3px;text-align:right">${Math.round(timeLimitSecs/60)} min total</div>
+    </div>`:''}
+    <!-- Progress preguntas -->
+    <div class="pbar-wrap mb4" style="height:4px"><div class="pbar" style="width:${(answered/total*100).toFixed(1)}%;background:var(--accent)"></div></div>
+    <!-- Q numbers legend + grid (collapsible on mobile) -->
+    <details style="margin-bottom:12px" open>
+      <summary style="cursor:pointer;font-size:12px;color:var(--text2);font-weight:600;list-style:none;display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:7px;user-select:none">
+        <span>📋 Preguntas <span style="font-weight:400;color:var(--text3)">(${answered}/${total} resp. · ${Object.keys(activeExam.marked||{}).filter(k=>activeExam.marked[k]).length} marcadas)</span></span>
+        <span style="color:var(--text3);font-size:11px">▾</span>
+      </summary>
+      <div style="padding:10px 0 4px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+        <span style="font-size:10px;color:var(--text3);display:flex;align-items:center;gap:3px"><span style="width:11px;height:11px;border-radius:3px;background:var(--bg3);border:1px solid var(--border);display:inline-block"></span>Pendiente</span>
+        <span style="font-size:10px;color:var(--green);display:flex;align-items:center;gap:3px"><span style="width:11px;height:11px;border-radius:3px;background:rgba(52,196,124,.15);border:1px solid rgba(52,196,124,.3);display:inline-block"></span>Resp.</span>
+        <span style="font-size:10px;color:var(--yellow);display:flex;align-items:center;gap:3px"><span style="width:11px;height:11px;border-radius:3px;background:rgba(245,200,66,.15);border:1px solid rgba(245,200,66,.4);display:inline-block"></span>⚑ Marc.</span>
+        <span style="font-size:10px;color:var(--accent);display:flex;align-items:center;gap:3px"><span style="width:11px;height:11px;border-radius:3px;background:var(--accent);display:inline-block"></span>Actual</span>
+      </div>
+    <!-- Q numbers -->
+    <div class="flex fw g1 mb4">
+      ${questions.map((qq,i)=>{
+        const isCurr=i===currentIdx;
+        const isDone=!!answers[qq.id];
+        const isMarked=!!(activeExam.marked&&activeExam.marked[qq.id]);
+        let cls='qnum';
+        if(isCurr) cls+=' curr';
+        else if(isDone&&isMarked) cls+=' done marked';
+        else if(isDone) cls+=' done';
+        else if(isMarked) cls+=' marked';
+        const icon=isMarked&&!isCurr?'⚑':'';
+        return `<button class="${cls}" onclick="gotoQ(${i})" title="${isDone?'Respondida':'Pendiente'}${isMarked?' · Marcada':''}">${icon||i+1}</button>`;
+      }).join('')}
+    </div>
+    </div></details>
+    <!-- Question -->
+    <div class="card mb4">
+      <div class="flex g2 fw mb4">
+        <span class="badge ${catBadge[q.category]}">${catLabel[q.category]}</span>
+        <span class="badge ${diffBadge[q.difficulty]}">${diffLabel[q.difficulty]}</span>
+        ${q.subcategory?`<span class="tag">${q.subcategory}</span>`:''}
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+        <button onclick="toggleMark('${q.id}')" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid ${activeExam.marked&&activeExam.marked[q.id]?'rgba(245,200,66,.5)':'var(--border)'};background:${activeExam.marked&&activeExam.marked[q.id]?'rgba(245,200,66,.15)':'var(--bg3)'};color:${activeExam.marked&&activeExam.marked[q.id]?'var(--yellow)':'var(--text3)'};cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .15s">
+          ⚑ ${activeExam.marked&&activeExam.marked[q.id]?'Marcada — quitar marca':'Marcar para revisar'}
+        </button>
+      </div>
+      <p style="font-size:15px;line-height:1.7;margin-bottom:22px">${q.statement}</p>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${(q.options||[]).map(o=>{
+          const sel=answers[q.id]===o.id;
+          const hasAns=!!answers[q.id];
+          const isCorrect=o.id===q.correct_id;
+          const isWrong=sel&&!isCorrect;
+          // After answering: green=correct, pink=wrong selection
+          let borderCol='var(--border)', bgCol='var(--bg3)', textCol='var(--text2)', circBorder='var(--border)', circBg='transparent';
+          if(hasAns){
+            if(isCorrect){ borderCol='rgba(52,196,124,.5)'; bgCol='rgba(52,196,124,.12)'; textCol='var(--text)'; circBorder='var(--green)'; circBg=sel?'var(--green)':'transparent'; }
+            else if(isWrong){ borderCol='rgba(244,114,182,.5)'; bgCol='rgba(244,114,182,.1)'; textCol='var(--text)'; circBorder='var(--pink)'; circBg='var(--pink)'; }
+          } else if(sel){ borderCol='var(--accent)'; bgCol='rgba(79,142,247,.1)'; textCol='var(--text)'; circBorder='var(--accent)'; circBg='var(--accent)'; }
+          const circContent = sel ? `<div style="width:8px;height:8px;border-radius:50%;background:#fff"></div>` : (hasAns&&isCorrect ? `<span style="font-size:10px;color:#fff">✓</span>` : '');
+          return `<button class="opt-btn" style="border-color:${borderCol};background:${bgCol};cursor:${hasAns?'default':'pointer'}" onclick="selectAnswer('${q.id}','${o.id}')" ${hasAns?'disabled':''}>
+            <div class="opt-circle" style="border-color:${circBorder};background:${circBg}">${circContent}</div>
+            <div style="flex:1">
+              <span style="font-size:11px;font-family:var(--mono);color:var(--text3);margin-right:6px">${o.id.toUpperCase()})</span>
+              <span style="font-size:14px;color:${textCol}">${o.text}</span>
+              ${hasAns&&isCorrect?`<span style="margin-left:8px;font-size:11px;font-weight:700;color:var(--green)">✓ Correcta</span>`:''}
+              ${isWrong?`<span style="margin-left:8px;font-size:11px;font-weight:600;color:var(--pink)">✗ Incorrecta</span>`:''}
+            </div>
+          </button>`;
+        }).join('')}
+      </div>
+      ${answers[q.id]?`
+      <div style="margin-top:12px;padding:10px 14px;background:rgba(79,142,247,.08);border:1px solid rgba(79,142,247,.15);border-radius:6px;font-size:12px;color:var(--accent)">
+        Respuesta guardada — continúa con la siguiente pregunta ${q.image?'· 🖼️ imagen disponible en el resumen final':''}
+      </div>
+      `:''}
+
+    </div>
+    <!-- Nav -->
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-g" onclick="gotoQ(${currentIdx-1})" ${currentIdx===0?'disabled':''}>← Anterior</button>
+      <div style="display:flex;gap:8px;align-items:center">
+        ${!answers[q.id]?`<button class="btn btn-g" onclick="skipQ(${currentIdx})" style="font-size:12px;color:var(--text3)">Saltar →</button>`:''}
+        ${currentIdx<total-1
+          ?`<button class="btn btn-p" onclick="gotoQ(${currentIdx+1})">Siguiente →</button>`
+          :`<button class="btn btn-p" onclick="finishExam()">🏁 Finalizar simulacro</button>`}
+      </div>
+    </div>
+  </div>`;
+}
+
+function gotoQ(i){
+  if(i<0||i>=activeExam.questions.length) return;
+  activeExam.currentIdx=i;
+  drawExam();
+}
+
+function selectAnswer(qId, optId){
+  if(activeExam.answers[qId]) return;
+  activeExam.answers[qId]=optId;
+  drawExam();
+}
+
+function toggleMark(qId){
+  if(!activeExam.marked) activeExam.marked={};
+  activeExam.marked[qId]=!activeExam.marked[qId];
+  if(!activeExam.marked[qId]) delete activeExam.marked[qId];
+  drawExam();
+}
+
+function skipQ(idx){
+  // Jump to next unanswered question
+  const qs=activeExam.questions;
+  const total=qs.length;
+  for(let i=1;i<=total;i++){
+    const ni=(idx+i)%total;
+    if(!activeExam.answers[qs[ni].id]){
+      activeExam.currentIdx=ni;
+      drawExam();
+      return;
+    }
+  }
+  // All answered, go next
+  if(idx<total-1) gotoQ(idx+1);
+}
+
+function finishExam(auto=false){
+  if(!auto && !confirm(`¿Finalizar? Respondiste ${Object.keys(activeExam.answers).length}/${activeExam.questions.length} preguntas.`)) return;
+  clearInterval(examTimerInterval);
+  activeExam.elapsed=Math.floor((Date.now()-activeExam.startTime)/1000);
+
+  // Calculate results
+  const stats=DB.stats();
+  let correct=0,wrong=0;
+  const catStats={};
+  const details=activeExam.questions.map(q=>{
+    const sel=activeExam.answers[q.id];
+    const isC=sel===q.correct_id;
+    if(sel){ if(isC) correct++; else wrong++; }
+    if(!catStats[q.category]) catStats[q.category]={correct:0,total:0};
+    catStats[q.category].total++;
+    if(isC&&sel) catStats[q.category].correct++;
+    // Update SM-2
+    if(sel){
+      stats[q.id]=sm2Update(stats[q.id]||{},isC);
+    }
+    return {qId:q.id,sel,isC:isC&&!!sel};
+  });
+  DB.saveStats(stats);
+
+  const total=activeExam.questions.length;
+  const score=Math.round(correct/total*100);
+  const exam={
+    id:activeExam.id, name:activeExam.name, mode:activeExam.mode,
+    questions:activeExam.questions.map(q=>q.id),
+    answers:activeExam.answers,
+    totalSeconds:activeExam.elapsed,
+    timeLimitSecs:activeExam.timeLimitSecs||0,
+    correct,wrong,unanswered:total-correct-wrong,total,score,
+    catStats,
+    details,
+    date:new Date().toISOString()
+  };
+
+  const exams=DB.exams();
+  exams.unshift(exam);
+  DB.saveExams(exams);
+
+  activeExam=null;
+  clearInterval(examTimerInterval);
+  showResults(exam);
+}
+
+// ═══════════════════════════════════════
+// RESULTS
+// ═══════════════════════════════════════
+function showResults(exam){
+  const qs=DB.questions();
+  const qMap=Object.fromEntries(qs.map(q=>[q.id,q]));
+  const {total,correct,wrong,unanswered,score,totalSeconds,catStats,details,name}=exam;
+  const avg=total?Math.round(totalSeconds/total):0;
+  const col=scoreColor(score);
+
+  document.getElementById('sim-config').style.display='none';
+  document.getElementById('sim-active').style.display='';
+  document.getElementById('sim-active').innerHTML=`
+  <div style="max-width:800px;margin:0 auto">
+    <div class="flex jcb aic mb4" style="flex-wrap:wrap;gap:12px">
+      <div><h1 style="font-size:20px;font-weight:700">Resultados</h1><p style="color:var(--text2);font-size:13px">${name}</p></div>
+      <button class="btn btn-g" onclick="renderSimConfig()">🧪 Nuevo simulacro</button>
+    </div>
+    <!-- Summary -->
+    <div class="flex g4 mb4 aic" style="flex-wrap:wrap">
+      <div style="text-align:center">
+        ${scoreRingHTML(score,col)}
+      </div>
+      <div class="grid4" style="flex:1;min-width:200px">
+        ${[['✅ Correctas',correct,'var(--green)'],['❌ Incorrectas',wrong,'var(--red)'],['⬜ Sin resp.',unanswered,'var(--text3)'],['⏱ Total',fmtTime(totalSeconds),'var(--text)'],['⌛ Promedio',avg+'s/preg','var(--text2)']].map(([l,v,c])=>`
+        <div class="stat-card"><div class="stat-label">${l}</div><div class="stat-val" style="color:${c};font-size:22px">${v}</div></div>`).join('')}
+      </div>
+    </div>
+    <!-- Category -->
+    ${Object.keys(catStats).length?`
+    <div class="card mb4">
+      <h3 style="font-size:14px;font-weight:600;margin-bottom:14px">Rendimiento por Categoría</h3>
+      ${Object.entries(catStats).map(([c,s])=>{
+        const p=s.total?Math.round(s.correct/s.total*100):0;
+        return `<div style="margin-bottom:12px">
+          <div class="flex jcb aic mb-1" style="margin-bottom:4px"><span style="font-size:13px">${catLabel[c]||c}</span><span style="font-size:13px;font-family:var(--mono);color:${scoreColor(p)}">${s.correct}/${s.total} — ${p}%</span></div>
+          <div class="pbar-wrap" style="height:5px"><div class="pbar" style="width:${p}%;background:${scoreColor(p)}"></div></div>
+        </div>`;
+      }).join('')}
+    </div>`:''}
+    <!-- Filter -->
+    <div class="flex g2 mb4 fw">
+      <span style="font-size:13px;font-weight:600;color:var(--text2);line-height:2">Mostrar:</span>
+      ${[['all','Todas'],['correct','Correctas ✅'],['wrong','Incorrectas ❌'],['unanswered','Sin resp. ⬜']].map(([v,l])=>`<button onclick="filterResults('${v}',this)" style="font-size:12px;padding:5px 12px;border-radius:6px;cursor:pointer;background:${v==='all'?'var(--accent)':'var(--bg3)'};color:${v==='all'?'#fff':'var(--text2)'};border:1px solid ${v==='all'?'var(--accent)':'var(--border)'}" class="res-filter-btn">${l}</button>`).join('')}
+    </div>
+    <!-- Details -->
+    <div id="res-details">
+      ${details.map(d=>{
+        const q=qMap[d.qId];
+        if(!q) return '';
+        return answerDetailHTML(d,q);
+      }).join('')}
+    </div>
+
+    <!-- ═══ RESUMEN FINAL ═══ -->
+    <div style="margin-top:32px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;padding-bottom:12px;border-bottom:2px solid var(--border)">
+        <span style="font-size:22px">📋</span>
+        <h2 style="font-size:18px;font-weight:700">Resumen del Simulacro</h2>
+        <span style="font-size:12px;color:var(--text3);margin-left:4px">con explicaciones e imágenes</span>
+      </div>
+
+      ${(() => {
+        const correctas = details.filter(d => d.isC);
+        const incorrectas = details.filter(d => d.sel && !d.isC);
+        const sinResp = details.filter(d => !d.sel);
+
+        const renderSummaryCard = (d) => {
+          const q = qMap[d.qId];
+          if(!q) return '';
+          const isC = d.isC, sel = d.sel;
+          const selOpt = (q.options||[]).find(o=>o.id===sel);
+          const corrOpt = (q.options||[]).find(o=>o.id===q.correct_id);
+          const borderLeft = !sel ? 'var(--text3)' : isC ? 'var(--green)' : 'var(--red)';
+          return `
+          <div style="background:var(--bg2);border:1px solid var(--border);border-left:3px solid ${borderLeft};border-radius:8px;padding:16px 18px;margin-bottom:12px">
+            <p style="font-size:14px;line-height:1.65;color:var(--text);margin-bottom:12px;font-weight:500">${q.statement}</p>
+            <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:${(q.explanation||q.image)?'12px':'0'}">
+              ${(q.options||[]).map(o=>{
+                const isSel = sel===o.id, isCorr = o.id===q.correct_id;
+                let bg='var(--bg3)', border='transparent', col='var(--text3)', fw='400';
+                if(isCorr){bg='rgba(52,196,124,.1)';border='rgba(52,196,124,.3)';col='var(--text)';fw='600';}
+                if(isSel&&!isCorr){bg='rgba(240,90,90,.1)';border='rgba(240,90,90,.3)';col='var(--text)';fw='600';}
+                return `<div style="display:flex;gap:8px;align-items:center;padding:7px 11px;border-radius:6px;background:${bg};border:1px solid ${border}">
+                  <span style="font-size:11px;font-family:var(--mono);width:16px;flex-shrink:0;color:${isCorr?'var(--green)':'var(--text3)'};font-weight:${fw}">${o.id.toUpperCase()}</span>
+                  <span style="font-size:13px;flex:1;color:${col};font-weight:${fw}">${o.text}</span>
+                  ${isCorr?'<span style="color:var(--green);font-size:11px;font-weight:700;flex-shrink:0">✓ Correcta</span>':''}
+                  ${isSel&&!isCorr?'<span style="color:var(--red);font-size:11px;flex-shrink:0">✗ Tu resp.</span>':''}
+                </div>`;
+              }).join('')}
+            </div>
+            ${q.explanation?`<div style="padding:10px 13px;background:rgba(79,142,247,.08);border:1px solid rgba(79,142,247,.18);border-radius:6px;font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:${q.image?'12px':'0'}"><strong style="color:var(--accent)">💡 Explicación: </strong>${q.explanation}</div>`:''}
+            ${q.image?`
+            <div style="margin-top:${q.explanation?'0':'0'}">
+              <p style="font-size:11px;color:var(--text3);margin-bottom:7px;display:flex;align-items:center;gap:5px"><span>🖼️</span> Imagen de referencia</p>
+              <img src="${q.image}" style="max-width:100%;max-height:400px;border-radius:var(--r);border:1px solid var(--border);display:block;cursor:pointer;transition:opacity .2s" onclick="openImgFullscreen(this.src)" title="Clic para ampliar" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+              <p style="font-size:10px;color:var(--text3);margin-top:4px">🔍 Clic para ampliar</p>
+            </div>`:''}
+          </div>`;
+        };
+
+        let html = '';
+
+        if(incorrectas.length) {
+          html += `
+          <div style="margin-bottom:28px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+              <div style="width:4px;height:20px;background:var(--red);border-radius:2px"></div>
+              <h3 style="font-size:15px;font-weight:700;color:var(--red)">❌ Incorrectas (${incorrectas.length})</h3>
+            </div>
+            ${incorrectas.map(renderSummaryCard).join('')}
+          </div>`;
+        }
+
+        if(correctas.length) {
+          html += `
+          <div style="margin-bottom:28px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+              <div style="width:4px;height:20px;background:var(--green);border-radius:2px"></div>
+              <h3 style="font-size:15px;font-weight:700;color:var(--green)">✅ Correctas (${correctas.length})</h3>
+            </div>
+            ${correctas.map(renderSummaryCard).join('')}
+          </div>`;
+        }
+
+        if(sinResp.length) {
+          html += `
+          <div style="margin-bottom:28px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+              <div style="width:4px;height:20px;background:var(--text3);border-radius:2px"></div>
+              <h3 style="font-size:15px;font-weight:700;color:var(--text3)">⬜ Sin responder (${sinResp.length})</h3>
+            </div>
+            ${sinResp.map(renderSummaryCard).join('')}
+          </div>`;
+        }
+
+        return html;
+      })()}
+    </div>
+
+    <div class="flex g3 mt4 fw">
+      <button class="btn btn-p" onclick="renderSimConfig()">🧪 Nuevo simulacro</button>
+      <button class="btn btn-g" onclick="goto('dashboard')">📊 Dashboard</button>
+    </div>
+  </div>`;
+}
+
+let currentResFilter='all';
+function filterResults(f, btn){
+  currentResFilter=f;
+  document.querySelectorAll('.res-filter-btn').forEach(b=>{
+    b.style.background=b===btn?'var(--accent)':'var(--bg3)';
+    b.style.color=b===btn?'#fff':'var(--text2)';
+    b.style.border=`1px solid ${b===btn?'var(--accent)':'var(--border)'}`;
+  });
+  // get the last exam shown
+  const exams=DB.exams();
+  if(!exams.length) return;
+  const exam=exams[0];
+  const qs=DB.questions();
+  const qMap=Object.fromEntries(qs.map(q=>[q.id,q]));
+  const {details}=exam;
+  const filtered=details.filter(d=>{
+    if(f==='correct') return d.isC;
+    if(f==='wrong') return d.sel&&!d.isC;
+    if(f==='unanswered') return !d.sel;
+    return true;
+  });
+  document.getElementById('res-details').innerHTML=filtered.map(d=>answerDetailHTML(d,qMap[d.qId])).join('');
+}
+
+function answerDetailHTML(d,q){
+  if(!q) return '';
+  const isC=d.isC, sel=d.sel;
+  const icon=!sel?'⬜':isC?'✅':'❌';
+  const borderColor=!sel?'var(--border)':isC?'rgba(52,196,124,.25)':'rgba(240,90,90,.25)';
+  return `
+  <div style="background:var(--bg2);border:1px solid ${borderColor};border-radius:8px;overflow:hidden;margin-bottom:8px">
+    <button onclick="toggleRes(this)" style="width:100%;padding:13px 15px;cursor:pointer;background:none;border:none;display:flex;align-items:center;gap:10px;text-align:left">
+      <span>${icon}</span>
+      <span style="flex:1;font-size:13px;line-height:1.45;color:var(--text)">${(q.statement||'').slice(0,110)}${(q.statement||'').length>110?'…':''}</span>
+      <span style="color:var(--text3);font-size:12px">▼</span>
+    </button>
+    <div style="display:none;padding:0 15px 15px;border-top:1px solid var(--border)">
+      <p style="font-size:14px;line-height:1.65;padding:12px 0;color:var(--text)">${q.statement}</p>
+      ${(q.options||[]).map(o=>{
+        const isSel=sel===o.id, isCorrectOpt=o.id===q.correct_id;
+        let bg='var(--bg3)',border='transparent',col='var(--text2)';
+        if(isCorrectOpt){bg='rgba(52,196,124,.1)';border='rgba(52,196,124,.25)';col='var(--text)';}
+        if(isSel&&!isCorrectOpt){bg='rgba(240,90,90,.1)';border='rgba(240,90,90,.25)';col='var(--text)';}
+        return `<div style="display:flex;gap:8px;align-items:center;padding:8px 10px;border-radius:6px;margin-bottom:5px;background:${bg};border:1px solid ${border}">
+          <span style="font-size:11px;font-family:var(--mono);width:14px;color:${isCorrectOpt?'var(--green)':'var(--text3)'}">${o.id.toUpperCase()}</span>
+          <span style="font-size:13px;flex:1;color:${col}">${o.text}</span>
+          ${isCorrectOpt?'<span style="color:var(--green);font-weight:700;font-size:12px">✓ Correcta</span>':''}
+          ${isSel&&!isCorrectOpt?'<span style="color:var(--red);font-size:12px">✗ Tu resp.</span>':''}
+        </div>`;
+      }).join('')}
+      ${q.explanation?`<div style="margin-top:8px;padding:9px 12px;background:rgba(79,142,247,.08);border:1px solid rgba(79,142,247,.15);border-radius:6px;font-size:12px;color:var(--text2);line-height:1.55"><strong style="color:var(--accent)">Explicación: </strong>${q.explanation}</div>`:''}
+      ${q.image?`<div style="margin-top:10px"><p style="font-size:11px;color:var(--text3);margin-bottom:5px">🖼️ Imagen de referencia</p><img src="${q.image}" style="max-width:100%;max-height:260px;border-radius:var(--r);border:1px solid var(--border);cursor:pointer" onclick="openImgFullscreen(this.src)"></div>`:''}
+    </div>
+  </div>`;
+}
+
+function toggleRes(btn){
+  const detail=btn.nextElementSibling;
+  const arrow=btn.querySelector('span:last-child');
+  const open=detail.style.display==='none';
+  detail.style.display=open?'block':'none';
+  arrow.textContent=open?'▲':'▼';
+}
+
+function scoreRingHTML(score,col){
+  const r=52,circ=2*Math.PI*r,dash=circ-(score/100)*circ;
+  return `<div style="position:relative;width:130px;height:130px">
+    <svg width="130" height="130" style="transform:rotate(-90deg)">
+      <circle cx="65" cy="65" r="${r}" fill="none" stroke="var(--bg3)" stroke-width="10"/>
+      <circle cx="65" cy="65" r="${r}" fill="none" stroke="${col}" stroke-width="10"
+        stroke-dasharray="${circ}" stroke-dashoffset="${dash}" stroke-linecap="round"/>
+    </svg>
+    <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
+      <span style="font-size:28px;font-weight:700;color:${col};font-family:var(--mono)">${score}%</span>
+      <span style="font-size:10px;color:var(--text3)">puntaje</span>
+    </div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════
+function renderDashboard(){
+  const qs=DB.questions();
+  const exams=DB.exams();
+  const stats=DB.stats();
+  const total=qs.length;
+  const totalExams=exams.length;
+  const recentExams=exams.slice(0,5);
+  const avgScore=recentExams.length?Math.round(recentExams.reduce((a,e)=>a+e.score,0)/recentExams.length):0;
+
+  // Due for review
+  const dueCount=qs.filter(q=>isDue(stats[q.id])).length;
+
+  // Alert
+  const alertEl=document.getElementById('dash-alert');
+  alertEl.innerHTML=dueCount>0?`<div class="alert alert-yellow">⏰ <strong>${dueCount}</strong> preguntas pendientes de repaso espaciado hoy <button class="btn btn-sm" onclick="goto('refuerzo')" style="background:rgba(245,200,66,.2);color:var(--yellow);border:none;margin-left:auto">Repasar →</button></div>`:'';
+
+  // Stats
+  document.getElementById('dash-stats').innerHTML=`
+    ${[['📚','Total preguntas',total,'var(--accent)'],['🧪','Simulacros',totalExams,'var(--green)'],['🏆','Promedio reciente',avgScore+'%','var(--yellow)'],['⏰','Por repasar hoy',dueCount,'var(--orange)']].map(([i,l,v,c])=>`
+    <div class="stat-card">
+      <div class="flex aic g2"><div class="stat-icon" style="background:${c}22;font-size:18px">${i}</div><span style="font-size:12px;color:var(--text2)">${l}</span></div>
+      <div class="stat-val" style="color:${c}">${v}</div>
+    </div>`).join('')}`;
+
+  // Mastery by category
+  const catMastery={basicas:{c:0,t:0},clinicas:{c:0,t:0},cultura:{c:0,t:0}};
+  Object.entries(stats).forEach(([qId,s])=>{
+    const q=qs.find(x=>x.id===qId);
+    if(!q||!s.seen) return;
+    if(catMastery[q.category]){catMastery[q.category].c+=s.correct;catMastery[q.category].t+=s.seen;}
+  });
+  document.getElementById('dash-mastery').innerHTML=`
+    <h3 style="font-size:14px;font-weight:600;margin-bottom:6px">Dominio por Área</h3>
+    <p style="font-size:11px;color:var(--text3);margin-bottom:16px">Basado en historial de respuestas</p>
+    ${Object.entries(catMastery).map(([c,s])=>{
+      const p=s.t?Math.round(s.c/s.t*100):0;
+      const col={basicas:'var(--accent)',clinicas:'var(--green)',cultura:'var(--yellow)'}[c];
+      return `<div style="margin-bottom:14px">
+        <div class="flex jcb aic" style="margin-bottom:4px"><span style="font-size:13px">${catLabel[c]}</span><span style="font-size:13px;font-family:var(--mono);color:${col}">${p}%</span></div>
+        <div class="pbar-wrap" style="height:5px"><div class="pbar" style="width:${p}%;background:${col}"></div></div>
+      </div>`;
+    }).join('')}
+    ${!Object.values(catMastery).some(s=>s.t)?`<p style="font-size:12px;color:var(--text3)">Completa simulacros para ver tu dominio</p>`:''}`;
+
+  // Weak questions
+  const weak=qs.filter(q=>stats[q.id]&&stats[q.id].seen>=2)
+    .sort((a,b)=>{
+      const sa=stats[a.id],sb=stats[b.id];
+      return (sa.correct/sa.seen)-(sb.correct/sb.seen);
+    }).slice(0,5);
+  document.getElementById('dash-weak').innerHTML=`
+    <div class="flex jcb aic mb4"><h3 style="font-size:14px;font-weight:600">Preguntas Débiles</h3><span>⚠️</span></div>
+    ${!weak.length?`<p style="font-size:12px;color:var(--text3)">Sin datos aún — completa simulacros</p>`:
+    weak.map(q=>{
+      const s=stats[q.id];
+      const acc=Math.round(s.correct/s.seen*100);
+      return `<div style="display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--border)">
+        <div style="min-width:34px;height:20px;border-radius:4px;background:rgba(240,90,90,.15);color:var(--red);display:flex;align-items:center;justify-content:center;font-size:11px;font-family:var(--mono);font-weight:600">${acc}%</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${q.statement}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">${s.seen} intentos · ${q.subcategory||catLabel[q.category]}</div>
+        </div>
+      </div>`;
+    }).join('')}`;
+
+  // History
+  document.getElementById('dash-history').innerHTML=`
+    <div class="flex jcb aic mb4">
+      <h3 style="font-size:14px;font-weight:600">Historial de Simulacros</h3>
+      <button class="btn btn-g btn-sm" onclick="goto('estadisticas')">Ver todo →</button>
+    </div>
+    ${!recentExams.length?`<div class="empty" style="padding:28px 0"><span style="font-size:28px">🧪</span><h3>Sin simulacros aún</h3><button class="btn btn-p btn-sm" onclick="goto('simulacro')">Crear simulacro</button></div>`:`
+    <div style="overflow-x:auto">
+    <table>
+      <thead><tr><th>Nombre</th><th>Fecha</th><th>Preg.</th><th>Puntaje</th><th>Tiempo</th></tr></thead>
+      <tbody>
+        ${recentExams.map(e=>`<tr>
+          <td style="font-weight:500">${e.name||'Simulacro'}</td>
+          <td style="color:var(--text2)">${new Date(e.date).toLocaleDateString('es-MX',{day:'2-digit',month:'short'})}</td>
+          <td style="font-family:var(--mono)">${e.total}</td>
+          <td><span style="font-family:var(--mono);font-weight:700;color:${scoreColor(e.score)}">${e.score}%</span></td>
+          <td style="font-family:var(--mono);font-size:12px;color:var(--text2)">${fmtTime(e.totalSeconds)}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table></div>`}`;
+}
+
+// ═══════════════════════════════════════
+// ESTADÍSTICAS
+// ═══════════════════════════════════════
+function renderEstadisticas(){
+  const exams=DB.exams();
+  const qs=DB.questions();
+  const stats=DB.stats();
+  const el=document.getElementById('stats-content');
+
+  // Mastery by subcategory
+  const sub={};
+  qs.forEach(q=>{
+    const key=q.subcategory||q.category;
+    if(!sub[key]) sub[key]={correct:0,total:0,cat:q.category};
+    const s=stats[q.id];
+    if(s&&s.seen>0){sub[key].correct+=s.correct;sub[key].total+=s.seen;}
+  });
+  const subRows=Object.entries(sub).filter(([,s])=>s.total>0).sort((a,b)=>a[1].correct/a[1].total-b[1].correct/b[1].total);
+
+  el.innerHTML=`
+  <!-- Progress chart (line chart SVG) -->
+  ${exams.length<2?`<div class="card mb4"><div class="empty" style="padding:30px"><p style="font-size:13px;color:var(--text3)">Completa al menos 2 simulacros para ver tu progreso</p></div></div>`:`
+  <div class="card mb4">
+    <h3 style="font-size:14px;font-weight:600;margin-bottom:4px">Progreso en el Tiempo</h3>
+    <p style="font-size:11px;color:var(--text3);margin-bottom:18px">Últimos ${Math.min(exams.length,15)} simulacros</p>
+    ${(()=>{
+      const data=exams.slice(0,15).reverse();
+      const W=560,H=170,pad={t:24,r:20,b:36,l:36};
+      const iW=W-pad.l-pad.r, iH=H-pad.t-pad.b;
+      const n=data.length;
+      const xs=data.map((_,i)=>pad.l+(n===1?iW/2:i*(iW/(n-1))));
+      const ys=data.map(e=>pad.t+iH-(e.score/100)*iH);
+      const gridLines=[25,50,75,100].map(v=>{
+        const y=pad.t+iH-(v/100)*iH;
+        return '<line x1="'+pad.l+'" y1="'+y+'" x2="'+(W-pad.r)+'" y2="'+y+'" stroke="var(--border)" stroke-width="1" stroke-dasharray="'+(v===50?'4,3':'2,5')+'"/><text x="'+(pad.l-5)+'" y="'+(y+4)+'" text-anchor="end" font-size="10" fill="var(--text3)" font-family="var(--mono)">'+v+'</text>';
+      }).join('');
+      const makeCurve=(xArr,yArr)=>{
+        if(xArr.length===1) return '';
+        let d='M'+xArr[0]+','+yArr[0]+' ';
+        for(let i=1;i<xArr.length;i++){
+          const cpx=(xArr[i-1]+xArr[i])/2;
+          d+='C'+cpx+','+yArr[i-1]+' '+cpx+','+yArr[i]+' '+xArr[i]+','+yArr[i]+' ';
+        }
+        return d;
+      };
+      const linePath=makeCurve(xs,ys);
+      const areaPath=linePath+' L'+xs[n-1]+','+(pad.t+iH)+' L'+xs[0]+','+(pad.t+iH)+' Z';
+      const dots=data.map((e,i)=>{
+        const col=e.score>=70?'#34c47c':e.score>=50?'#f5c842':'#f05a5a';
+        const showLbl=n<=8||i===0||i===n-1;
+        return '<circle cx="'+xs[i]+'" cy="'+ys[i]+'" r="4.5" fill="'+col+'" stroke="var(--bg2)" stroke-width="2"/>'+(showLbl?'<text x="'+xs[i]+'" y="'+(ys[i]-11)+'" text-anchor="middle" font-size="10" fill="'+col+'" font-family="var(--mono)" font-weight="700">'+e.score+'%</text>':'');
+      }).join('');
+      const xLabels=data.map((e,i)=>{
+        const show=n<=6||i===0||i===n-1||i%Math.ceil(n/5)===0;
+        if(!show) return '';
+        return '<text x="'+xs[i]+'" y="'+(H-5)+'" text-anchor="middle" font-size="9" fill="var(--text3)">'+new Date(e.date).toLocaleDateString('es-MX',{day:'2-digit',month:'short'})+'</text>';
+      }).join('');
+      return '<div style="overflow-x:auto"><svg viewBox="0 0 '+W+' '+H+'" width="100%" style="min-width:280px;max-width:100%;display:block"><defs><linearGradient id="lgArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--accent)" stop-opacity="0.2"/><stop offset="100%" stop-color="var(--accent)" stop-opacity="0.02"/></linearGradient></defs>'+gridLines+'<path d="'+areaPath+'" fill="url(#lgArea)"/><path d="'+linePath+'" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>'+dots+xLabels+'</svg></div>';
+    })()}
+  </div>`}
+
+  <!-- Mastery by area -->
+  ${subRows.length?`
+  <div class="card mb4">
+    <h3 style="font-size:14px;font-weight:600;margin-bottom:14px">Dominio por Área</h3>
+    ${subRows.slice(0,12).map(([name,s])=>{
+      const p=Math.round(s.correct/s.total*100);
+      return `<div style="margin-bottom:12px">
+        <div class="flex jcb aic" style="margin-bottom:4px">
+          <div class="flex aic g2"><span class="badge ${catBadge[s.cat]}" style="font-size:9px">${catLabel[s.cat]}</span><span style="font-size:13px">${name}</span></div>
+          <span style="font-size:13px;font-family:var(--mono);color:${scoreColor(p)};font-weight:600">${p}%</span>
+        </div>
+        <div class="pbar-wrap" style="height:5px"><div class="pbar" style="width:${p}%;background:${scoreColor(p)}"></div></div>
+      </div>`;
+    }).join('')}
+  </div>`:''}
+
+  <!-- Full history -->
+  <div class="card">
+    <h3 style="font-size:14px;font-weight:600;margin-bottom:14px">Historial Completo</h3>
+    ${!exams.length?`<p style="font-size:12px;color:var(--text3)">Sin simulacros aún</p>`:`
+    <div style="overflow-x:auto">
+    <table>
+      <thead><tr><th>Nombre</th><th>Fecha</th><th>Total</th><th>Correctas</th><th>Puntaje</th><th>Tiempo</th></tr></thead>
+      <tbody>
+        ${exams.map(e=>`<tr>
+          <td style="font-weight:500;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.name||'Simulacro'}</td>
+          <td style="color:var(--text2);white-space:nowrap">${new Date(e.date).toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'})}</td>
+          <td style="font-family:var(--mono)">${e.total}</td>
+          <td style="font-family:var(--mono);color:var(--green)">${e.correct}</td>
+          <td><span style="font-family:var(--mono);font-weight:700;color:${scoreColor(e.score)}">${e.score}%</span></td>
+          <td style="font-family:var(--mono);font-size:12px;color:var(--text2)">${fmtTime(e.totalSeconds)}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table></div>`}
+  </div>`;
+}
+
+// ═══════════════════════════════════════
+// REFUERZO
+// ═══════════════════════════════════════
+function renderRefuerzo(){
+  const qs=DB.questions();
+  const stats=DB.stats();
+  const exams=DB.exams();
+
+  const due=qs.filter(q=>isDue(stats[q.id]));
+  const weak=qs.filter(q=>stats[q.id]&&stats[q.id].seen>=2).sort((a,b)=>{
+    const sa=stats[a.id],sb=stats[b.id];
+    return (sa.correct/sa.seen)-(sb.correct/sb.seen);
+  });
+
+  const el=document.getElementById('ref-content');
+
+  el.innerHTML=`
+  ${!exams.length?`<div class="alert alert-blue">🧠 El modo refuerzo se activa después de tu primer simulacro. <button class="btn btn-p btn-sm" onclick="goto('simulacro')" style="margin-left:8px">Crear simulacro</button></div>`:''}
+
+  <div class="grid3 mb4">
+    <!-- Espaciado -->
+    <div class="card">
+      <div class="flex aic g3 mb3"><div style="font-size:24px">🕐</div><div><h3 style="font-size:14px;font-weight:600">Repetición Espaciada</h3><p style="font-size:11px;color:var(--text3)">Algoritmo SM-2</p></div></div>
+      <p style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:14px">Repasa preguntas en el momento óptimo para retención a largo plazo.</p>
+      <div style="background:rgba(79,142,247,.08);border-radius:6px;padding:10px 13px;margin-bottom:14px">
+        <span style="font-size:26px;font-weight:700;font-family:var(--mono);color:var(--accent)">${due.length}</span>
+        <span style="font-size:12px;color:var(--text2);margin-left:6px">para repasar hoy</span>
+      </div>
+      <button class="btn btn-p w100" onclick="startRefuerzoMode('spaced')" ${due.length===0?'disabled':''}>🕐 Repasar ahora →</button>
+    </div>
+    <!-- Refuerzo -->
+    <div class="card">
+      <div class="flex aic g3 mb3"><div style="font-size:24px">⚡</div><div><h3 style="font-size:14px;font-weight:600">Refuerzo Intensivo</h3><p style="font-size:11px;color:var(--text3)">Las que más fallas</p></div></div>
+      <p style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:14px">Ataca tus puntos débiles directamente.</p>
+      <div style="background:rgba(240,90,90,.08);border-radius:6px;padding:10px 13px;margin-bottom:14px">
+        <span style="font-size:26px;font-weight:700;font-family:var(--mono);color:var(--red)">${weak.length}</span>
+        <span style="font-size:12px;color:var(--text2);margin-left:6px">con bajo rendimiento</span>
+      </div>
+      <button class="btn w100" onclick="startRefuerzoMode('reinforcement')" ${weak.length===0?'disabled':''} style="background:rgba(240,90,90,.12);color:var(--red);border:1px solid rgba(240,90,90,.2)">⚡ Iniciar refuerzo →</button>
+    </div>
+    <!-- Mixto -->
+    <div class="card">
+      <div class="flex aic g3 mb3"><div style="font-size:24px">🎯</div><div><h3 style="font-size:14px;font-weight:600">Aleatorio</h3><p style="font-size:11px;color:var(--text3)">Práctica general</p></div></div>
+      <p style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:14px">Simulacro aleatorio de todo el banco para mantener el ritmo.</p>
+      <div style="background:rgba(245,200,66,.08);border-radius:6px;padding:10px 13px;margin-bottom:14px">
+        <span style="font-size:26px;font-weight:700;font-family:var(--mono);color:var(--yellow)">${qs.length}</span>
+        <span style="font-size:12px;color:var(--text2);margin-left:6px">preguntas disponibles</span>
+      </div>
+      <button class="btn w100" onclick="startRefuerzoMode('random')" ${qs.length===0?'disabled':''} style="background:rgba(245,200,66,.1);color:var(--yellow);border:1px solid rgba(245,200,66,.2)">🎯 Modo aleatorio →</button>
+    </div>
+  </div>
+
+  ${weak.length?`
+  <div class="card">
+    <div class="flex jcb aic mb4"><h3 style="font-size:14px;font-weight:600">Top 10 Preguntas Débiles</h3><span style="color:var(--red)">📉</span></div>
+    ${weak.slice(0,10).map((q,i)=>{
+      const s=stats[q.id];
+      const acc=Math.round(s.correct/s.seen*100);
+      return `<div style="display:flex;gap:10px;align-items:center;padding:11px 13px;background:var(--bg3);border-radius:7px;border:1px solid var(--border);margin-bottom:7px">
+        <span style="font-size:11px;font-family:var(--mono);color:var(--text3);width:20px">#${i+1}</span>
+        <div style="flex:1;min-width:0">
+          <p style="font-size:12px;line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${q.statement}</p>
+          <div class="flex g2 mt1" style="margin-top:4px">
+            <span class="badge ${catBadge[q.category]}" style="font-size:9px">${catLabel[q.category]}</span>
+            ${q.subcategory?`<span class="tag" style="font-size:9px">${q.subcategory}</span>`:''}
+            <span style="font-size:11px;color:var(--text3)">${s.seen} intentos</span>
+          </div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:20px;font-weight:700;font-family:var(--mono);color:${acc<30?'var(--red)':'var(--yellow)'}">${acc}%</div>
+          <div style="font-size:9px;color:var(--text3)">aciertos</div>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`:''}`;
+}
+
+function renderSemanas(){
+  const qs=DB.questions();
+  const stats=DB.stats();
+  const container=document.getElementById('semanas-content');
+
+  if(!qs.length){
+    container.innerHTML=`<div class="empty"><div style="font-size:32px">📅</div><h3>Sin preguntas aún</h3><p>Agrega preguntas para verlas organizadas por semana</p><button class="btn btn-p" onclick="goto('preguntas');showForm()">➕ Nueva pregunta</button></div>`;
+    return;
+  }
+
+  const weeks=getAllWeeks();
+
+  // Active week filter state
+  if(typeof renderSemanas._activeWeek==='undefined') renderSemanas._activeWeek=null;
+
+  // Week selector pills
+  const pillsHtml=`
+  <div class="card mb4">
+    <div class="flex g2 fw aic" style="margin-bottom:12px">
+      <span style="font-size:13px;font-weight:600;color:var(--text2)">Selecciona una semana:</span>
+    </div>
+    <div class="flex g2 fw">
+      <button onclick="filterSemana(null)" style="padding:8px 18px;border-radius:20px;font-size:13px;font-weight:600;cursor:pointer;border:2px solid ${renderSemanas._activeWeek===null?'var(--accent)':'var(--border)'};background:${renderSemanas._activeWeek===null?'rgba(79,142,247,.15)':'var(--bg3)'};color:${renderSemanas._activeWeek===null?'var(--accent)':'var(--text2)'};transition:all .15s">📚 Todas</button>
+      ${weeks.map(w=>{
+        const cnt=qs.filter(q=>getQuestionWeek(q)===w).length;
+        const isActive=renderSemanas._activeWeek===w;
+        return `<button onclick="filterSemana(${w})" style="padding:8px 18px;border-radius:20px;font-size:13px;font-weight:600;cursor:pointer;border:2px solid ${isActive?'#a78bfa':'var(--border)'};background:${isActive?'rgba(124,95,232,.15)':'var(--bg3)'};color:${isActive?'#a78bfa':'var(--text2)'};transition:all .15s">Semana ${w} <span style="font-size:10px;font-weight:400">(${cnt})</span></button>`;
+      }).join('')}
+    </div>
+  </div>`;
+
+  const activeW=renderSemanas._activeWeek;
+  const showWeeks=activeW===null?weeks:[activeW];
+
+  const weeksHtml=showWeeks.map(w=>{
+    const wqs=qs.filter(q=>getQuestionWeek(q)===w);
+    // date range
+    const wDates=wqs.map(q=>q.created_at||'').filter(Boolean).sort();
+    const dateRange=wDates.length?`${wDates[0].slice(0,10)} — ${wDates[wDates.length-1].slice(0,10)}`:'';
+    const seen=wqs.filter(q=>stats[q.id]&&stats[q.id].seen>0).length;
+    const correct=wqs.reduce((s,q)=>s+(stats[q.id]?.correct||0),0);
+    const totalSeen=wqs.reduce((s,q)=>s+(stats[q.id]?.seen||0),0);
+    const acc=totalSeen?Math.round(correct/totalSeen*100):0;
+
+    return `
+    <div class="card mb4">
+      <div class="flex jcb aic" style="flex-wrap:wrap;gap:8px;margin-bottom:14px">
+        <div>
+          <div class="flex aic g3">
+            <span style="font-size:22px">📅</span>
+            <div>
+              <h2 style="font-size:16px;font-weight:700">Semana ${w}</h2>
+              ${dateRange?`<div style="font-size:11px;color:var(--text3);margin-top:2px;font-family:var(--mono)">${dateRange}</div>`:''}
+            </div>
+          </div>
+        </div>
+        <div class="flex g3 aic" style="flex-wrap:wrap">
+          <div style="text-align:center;padding:6px 12px;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">
+            <div style="font-size:18px;font-weight:700;font-family:var(--mono);color:var(--accent)">${wqs.length}</div>
+            <div style="font-size:10px;color:var(--text3)">preguntas</div>
+          </div>
+          <div style="text-align:center;padding:6px 12px;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">
+            <div style="font-size:18px;font-weight:700;font-family:var(--mono);color:var(--green)">${seen}</div>
+            <div style="font-size:10px;color:var(--text3)">practicadas</div>
+          </div>
+          ${totalSeen?`<div style="text-align:center;padding:6px 12px;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">
+            <div style="font-size:18px;font-weight:700;font-family:var(--mono);color:${scoreColor(acc)}">${acc}%</div>
+            <div style="font-size:10px;color:var(--text3)">precisión</div>
+          </div>`:''}
+          <button class="btn btn-p btn-sm" onclick="startWeekExam(${w})" style="white-space:nowrap">🧪 Practicar semana ${w}</button>
+        </div>
+      </div>
+      <div class="divider" style="margin:10px 0 14px"></div>
+      ${wqs.map(q=>{
+        const s=stats[q.id]||{};
+        const acc2=s.seen?Math.round(s.correct/s.seen*100):null;
+        return `<div style="display:flex;gap:10px;align-items:center;padding:10px 12px;background:var(--bg3);border-radius:7px;border:1px solid var(--border);margin-bottom:7px">
+          <div style="flex:1;min-width:0">
+            <p style="font-size:13px;line-height:1.45;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${q.statement}</p>
+            <div class="flex g2 aic" style="margin-top:5px;flex-wrap:wrap">
+              <span class="badge ${catBadge[q.category]}" style="font-size:9px">${catLabel[q.category]}</span>
+              <span class="badge ${diffBadge[q.difficulty]}" style="font-size:9px">${diffLabel[q.difficulty]}</span>
+              ${q.subcategory?`<span class="tag" style="font-size:9px">${q.subcategory}</span>`:''}
+              ${q.created_at?`<span style="font-size:10px;color:var(--text3);font-family:var(--mono)">${q.created_at.slice(0,10)}</span>`:''}
+            </div>
+          </div>
+          ${acc2!==null?`<div style="text-align:center;flex-shrink:0">
+            <div style="font-size:16px;font-weight:700;font-family:var(--mono);color:${scoreColor(acc2)}">${acc2}%</div>
+            <div style="font-size:9px;color:var(--text3)">${s.seen} intentos</div>
+          </div>`:s.seen===0?`<div style="font-size:10px;color:var(--text3);flex-shrink:0">Sin intentos</div>`:''}
+        </div>`;
+      }).join('')}
+    </div>`;
+  }).join('');
+
+  container.innerHTML=pillsHtml+weeksHtml;
+}
+
+function filterSemana(w){
+  renderSemanas._activeWeek=w;
+  renderSemanas();
+}
+
+function startWeekExam(w){
+  goto('simulacro');
+  setTimeout(()=>{
+    simFilters={cats:[],diffs:[],subs:[],weeks:[w],mode:'random',timeLimitMins:0};
+    // Re-render so UI shows selected week
+    renderSimConfig();
+    // Start immediately after short delay
+    setTimeout(()=>startExam(),50);
+  },50);
+}
+
+function startRefuerzoMode(mode){
+  goto('simulacro');
+  setTimeout(()=>{
+    simFilters={cats:[],diffs:[],mode};
+    selMode(mode);
+    // Auto-set 20 questions and start
+    const nEl=document.getElementById('sim-n');
+    if(nEl){nEl.value=20;document.getElementById('sim-n-val').textContent=20;}
+    startExam();
+  },50);
+}
+
+// ═══════════════════════════════════════
+// BACKUP / RESTORE
+// ═══════════════════════════════════════
+function exportBackup(){
+  const data={
+    version:2,
+    exportedAt: new Date().toISOString(),
+    questions: DB.questions(),
+    exams: DB.exams(),
+    stats: DB.stats(),
+  };
+  const json=JSON.stringify(data,null,2);
+  const blob=new Blob([json],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  const date=new Date().toISOString().split('T')[0];
+  a.href=url;
+  a.download=`MedResidencia_backup_${date}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('✅ Backup exportado correctamente','success');
+}
+
+function importBackup(event){
+  const file=event.target.files[0];
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      if(!data.questions||!Array.isArray(data.questions))
+        throw new Error('Archivo inválido');
+      if(!confirm(`¿Importar backup?\n\n• ${data.questions.length} preguntas\n• ${(data.exams||[]).length} simulacros\n\nEsto reemplazará tus datos actuales.`)) return;
+      DB.saveQuestions(data.questions||[]);
+      DB.saveExams(data.exams||[]);
+      DB.saveStats(data.stats||{});
+      toast(`✅ Backup importado: ${data.questions.length} preguntas restauradas`,'success');
+      renderDashboard();
+      event.target.value='';
+    } catch(err){
+      toast('❌ Error al importar: archivo no válido','error');
+    }
+  };
+  reader.readAsText(file);
+}
+
+// ═══════════════════════════════════════
+// IMAGE FULLSCREEN
+// ═══════════════════════════════════════
+function openImgFullscreen(src){
+  const overlay=document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:zoom-out;padding:20px;animation:fadeIn .2s ease';
+  overlay.onclick=()=>overlay.remove();
+  overlay.innerHTML=`
+    <div style="position:relative;max-width:90vw;max-height:90vh">
+      <img src="${src}" style="max-width:90vw;max-height:88vh;border-radius:var(--rl);display:block;box-shadow:0 20px 60px rgba(0,0,0,.8)">
+      <button onclick="event.stopPropagation();this.closest('[style*=fixed]').remove()" style="position:absolute;top:-12px;right:-12px;width:32px;height:32px;border-radius:50%;background:#fff;color:#000;font-size:16px;border:none;cursor:pointer;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.4)">×</button>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+function openImgModal(qId){
+  const q=DB.questions().find(x=>x.id===qId);
+  if(q&&q.image) openImgFullscreen(q.image);
+}
+
+// ═══════════════════════════════════════
+// THEME & COLOR
+// ═══════════════════════════════════════
+const ACCENT_COLORS = [
+  {name:'Azul',    dark:{a:'#4f8ef7',a2:'#3a7aee'}, light:{a:'#3b7ef0',a2:'#2a6de0'}},
+  {name:'Rosa',    dark:{a:'#f472b6',a2:'#ec4899'}, light:{a:'#db2777',a2:'#be185d'}},
+  {name:'Violeta', dark:{a:'#a78bfa',a2:'#8b5cf6'}, light:{a:'#7c3aed',a2:'#6d28d9'}},
+  {name:'Verde',   dark:{a:'#34c47c',a2:'#22a566'}, light:{a:'#17a058',a2:'#0d8a48'}},
+  {name:'Naranja', dark:{a:'#f5874f',a2:'#e06b30'}, light:{a:'#c8622a',a2:'#b04d1a'}},
+  {name:'Rojo',    dark:{a:'#f05a5a',a2:'#dc3535'}, light:{a:'#dc3a3a',a2:'#c42020'}},
+  {name:'Cyan',    dark:{a:'#22d3ee',a2:'#06b6d4'}, light:{a:'#0891b2',a2:'#0e7490'}},
+  {name:'Menta',   dark:{a:'#6ee7b7',a2:'#34d399'}, light:{a:'#059669',a2:'#047857'}},
+];
+
+function applyAccentColor(idx){
+  const isLight=document.body.classList.contains('light');
+  const col=ACCENT_COLORS[idx];
+  const {a,a2}=isLight?col.light:col.dark;
+  document.documentElement.style.setProperty('--accent',a);
+  document.documentElement.style.setProperty('--accent2',a2);
+  // Also update light/dark body overrides inline
+  localStorage.setItem('mr_accent_idx',idx);
+  // Re-fill any visible sliders
+  document.querySelectorAll('input[type=range]').forEach(updateSliderFill);
+}
+
+function openColorPicker(){
+  const saved=parseInt(localStorage.getItem('mr_accent_idx')||'0');
+  const isLight=document.body.classList.contains('light');
+  const html=`
+  <div style="display:flex;flex-direction:column;gap:18px">
+    <p style="font-size:13px;color:var(--text2)">Elige el color principal de la app:</p>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+      ${ACCENT_COLORS.map((c,i)=>{
+        const col=isLight?c.light.a:c.dark.a;
+        const isSel=i===saved;
+        return `<button onclick="applyAccentColor(${i});document.querySelectorAll('.color-swatch').forEach((b,j)=>{b.style.outline=j===${i}?'3px solid '+b.dataset.col:'none';b.style.transform=j===${i}?'scale(1.12)':'scale(1)'});closeModal()" class="color-swatch" data-col="${col}"
+          style="width:100%;aspect-ratio:1;border-radius:12px;background:${col};border:none;cursor:pointer;outline:${isSel?'3px solid '+col:'none'};outline-offset:3px;transform:${isSel?'scale(1.12)':'scale(1)'};transition:all .15s;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px">
+          ${isSel?'<span style="font-size:16px">✓</span>':''}
+          <span style="font-size:10px;font-weight:700;color:rgba(255,255,255,.9);text-shadow:0 1px 2px rgba(0,0,0,.4)">${c.name}</span>
+        </button>`;
+      }).join('')}
+    </div>
+    <button class="btn btn-g w100" onclick="closeModal()">Cerrar</button>
+  </div>`;
+  openModal('🎨 Color del tema', html);
+}
+
+function toggleTheme(){
+  const isLight=document.body.classList.toggle('light');
+  localStorage.setItem('mr_theme', isLight?'light':'dark');
+  const btn=document.getElementById('theme-btn');
+  const label=document.getElementById('theme-label');
+  const mobBtn=document.getElementById('mob-theme-btn');
+  if(btn) btn.querySelector('.nav-icon').textContent=isLight?'🌙':'☀️';
+  if(label) label.textContent=isLight?'Modo oscuro':'Modo claro';
+  if(mobBtn) mobBtn.textContent=isLight?'🌙':'☀️';
+  // Re-apply accent color for new theme
+  const idx=parseInt(localStorage.getItem('mr_accent_idx')||'0');
+  applyAccentColor(idx);
+}
+
+// ═══════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════
+if(localStorage.getItem('mr_theme')==='light'){
+  document.body.classList.add('light');
+  const btn=document.getElementById('theme-btn');
+  if(btn){ btn.querySelector('.nav-icon').textContent='🌙'; btn.querySelector('#theme-label').textContent='Modo oscuro'; }
+  const mobBtn=document.getElementById('mob-theme-btn');
+  if(mobBtn) mobBtn.textContent='🌙';
+}
+// Restore accent color
+applyAccentColor(parseInt(localStorage.getItem('mr_accent_idx')||'0'));
+renderDashboard();
+
+// ═══════════════════════════════════════
+// SWIPE GESTURES (exam navigation)
+// ═══════════════════════════════════════
+(function(){
+  let tx=0,ty=0;
+  document.addEventListener('touchstart',e=>{
+    tx=e.touches[0].clientX;
+    ty=e.touches[0].clientY;
+  },{passive:true});
+  document.addEventListener('touchend',e=>{
+    if(!activeExam) return;
+    const dx=e.changedTouches[0].clientX-tx;
+    const dy=e.changedTouches[0].clientY-ty;
+    // Only horizontal swipes (more horizontal than vertical, >60px)
+    if(Math.abs(dx)<60||Math.abs(dy)>Math.abs(dx)*0.8) return;
+    // Don't trigger on option buttons
+    if(e.target.closest('.opt-btn')) return;
+    if(dx<0) gotoQ(activeExam.currentIdx+1);  // swipe left = next
+    else      gotoQ(activeExam.currentIdx-1);  // swipe right = prev
+  },{passive:true});
+})();
+</script>
+</body>
+</html>
