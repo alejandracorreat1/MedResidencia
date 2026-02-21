@@ -493,7 +493,7 @@ function isDue(s){ return !s || !s.nextReview || s.nextReview <= todayStr(); }
 // ═══════════════════════════════════════
 // CUSTOM SLIDER
 // ═══════════════════════════════════════
-const SLIDER_MIN=0, SLIDER_MAX=100, SLIDER_STEP=5;
+const SLIDER_MIN=0, SLIDER_MAX=100, SLIDER_STEP=1;
 let _sliderDragging=false;
 
 function sliderPct(val){ return (val-SLIDER_MIN)/(SLIDER_MAX-SLIDER_MIN); }
