@@ -1001,8 +1001,7 @@ function renderSimConfig(){
     <button class="btn btn-p btn-lg w100" onclick="startExam()">Iniciar simulacro</button>
   </div>`;
   simFilters={cats:[],diffs:[],subs:[],weeks:[],mode:'random',timeLimitMins:0};
-  setTimeout(()=>setSliderVal(0),10);
-}
+  setTimeout(()=>setSliderVal(0),10);}
 
 let simFilters={cats:[],diffs:[],subs:[],weeks:[],mode:'random',timeLimitMins:0};
 
@@ -1124,25 +1123,33 @@ function startExam(){
   if(simFilters.weeks.length) qs=qs.filter(q=>simFilters.weeks.includes(getQuestionWeek(q)));
 
   if(simFilters.mode==='reinforcement'){
-    qs=qs.filter(q=>stats[q.id]&&stats[q.id].seen>0).sort((a,b)=>{
-      const accA=(stats[a.id]||{correct:0,seen:1});
-      const accB=(stats[b.id]||{correct:0,seen:1});
-      return (accA.correct/accA.seen)-(accB.correct/accB.seen);
+    // Keep only seen questions, sorted worst accuracy first, no shuffle
+    qs=qs.filter(q=>stats[q.id]&&stats[q.id].seen>0);
+    if(!qs.length){ toast('Aún no tienes historial. Completa al menos un simulacro primero.','error'); return; }
+    qs.sort((a,b)=>{
+      const rA=(stats[a.id].correct/stats[a.id].seen);
+      const rB=(stats[b.id].correct/stats[b.id].seen);
+      return rA-rB; // worst first
     });
   } else if(simFilters.mode==='spaced'){
-    qs=qs.filter(q=>isDue(stats[q.id])).sort((a,b)=>{
+    qs=qs.filter(q=>isDue(stats[q.id]));
+    if(!qs.length){ toast('¡No hay preguntas pendientes de repasar hoy! Vuelve mañana 🎉','info'); return; }
+    qs.sort((a,b)=>{
       const da=(stats[a.id]||{}).nextReview||'0';
       const db=(stats[b.id]||{}).nextReview||'0';
       return da<db?-1:1;
     });
+  } else {
+    qs=shuffle(qs); // only shuffle in random mode
   }
 
-  const n=parseInt(document.getElementById('sim-n').value)||20;
-  const selected=shuffle(qs).slice(0,n);
+  let n=parseInt(document.getElementById('sim-n').value)||0;
+  if(n===0) n=qs.length;
+  const selected=qs.slice(0,n);
 
   if(!selected.length){ toast('No hay preguntas con esos filtros','error'); return; }
 
-  const name=document.getElementById('sim-name').value.trim()||`Simulacro ${new Date().toLocaleDateString('es-MX')}`;
+  const name=document.getElementById('sim-name')?document.getElementById('sim-name').value.trim()||`Simulacro ${new Date().toLocaleDateString('es-MX')}`:`Simulacro ${new Date().toLocaleDateString('es-MX')}`;
   activeExam={
     id:uid(), name, mode:simFilters.mode,
     questions:selected, answers:{}, marked:{}, currentIdx:0,
@@ -1811,7 +1818,6 @@ function renderEstadisticas(){
 function renderRefuerzo(){
   const qs=DB.questions();
   const stats=DB.stats();
-  const exams=DB.exams();
 
   const due=qs.filter(q=>isDue(stats[q.id]));
   const weak=qs.filter(q=>stats[q.id]&&stats[q.id].seen>=2).sort((a,b)=>{
@@ -1820,76 +1826,176 @@ function renderRefuerzo(){
   });
 
   const el=document.getElementById('ref-content');
-
   el.innerHTML=`
-  ${!exams.length?`<div class="alert alert-blue">🧠 El modo refuerzo se activa después de tu primer simulacro. <button class="btn btn-p btn-sm" onclick="goto('simulacro')" style="margin-left:8px">Crear simulacro</button></div>`:''}
 
-  <div class="grid3 mb4">
-    <!-- Espaciado -->
-    <div class="card">
-      <div class="flex aic g3 mb3"><div style="font-size:24px">🕐</div><div><h3 style="font-size:14px;font-weight:600">Repetición Espaciada</h3><p style="font-size:11px;color:var(--text3)">Algoritmo SM-2</p></div></div>
-      <p style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:14px">Repasa preguntas en el momento óptimo para retención a largo plazo.</p>
-      <div style="background:rgba(79,142,247,.08);border-radius:6px;padding:10px 13px;margin-bottom:14px">
-        <span style="font-size:26px;font-weight:700;font-family:var(--mono);color:var(--accent)">${due.length}</span>
-        <span style="font-size:12px;color:var(--text2);margin-left:6px">para repasar hoy</span>
+  <!-- ── SIMULACRO PREGUNTAS DÉBILES ── -->
+  <div class="card mb4" style="border-color:rgba(240,90,90,.3)">
+    <div class="flex aic g3 mb4">
+      <div style="width:44px;height:44px;border-radius:12px;background:rgba(240,90,90,.12);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">⚡</div>
+      <div>
+        <h2 style="font-size:16px;font-weight:700">Simulacro — Preguntas que más fallo</h2>
+        <p style="font-size:12px;color:var(--text2);margin-top:2px">Ordenadas de peor a mejor accuracy. Solo las que ya practicaste.</p>
       </div>
-      <button class="btn btn-p w100" onclick="startRefuerzoMode('spaced')" ${due.length===0?'disabled':''}>🕐 Repasar ahora →</button>
     </div>
-    <!-- Refuerzo -->
-    <div class="card">
-      <div class="flex aic g3 mb3"><div style="font-size:24px">⚡</div><div><h3 style="font-size:14px;font-weight:600">Refuerzo Intensivo</h3><p style="font-size:11px;color:var(--text3)">Las que más fallas</p></div></div>
-      <p style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:14px">Ataca tus puntos débiles directamente.</p>
-      <div style="background:rgba(240,90,90,.08);border-radius:6px;padding:10px 13px;margin-bottom:14px">
-        <span style="font-size:26px;font-weight:700;font-family:var(--mono);color:var(--red)">${weak.length}</span>
-        <span style="font-size:12px;color:var(--text2);margin-left:6px">con bajo rendimiento</span>
+    ${weak.length===0 ? `
+      <div style="padding:16px;background:var(--bg3);border-radius:8px;font-size:13px;color:var(--text3);text-align:center">
+        Completa al menos un simulacro para activar este modo.
+      </div>` : `
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px">
+        <div style="flex:1;min-width:100px;padding:12px;background:rgba(240,90,90,.08);border-radius:8px;border:1px solid rgba(240,90,90,.15);text-align:center">
+          <div style="font-size:28px;font-weight:700;font-family:var(--mono);color:var(--red)">${weak.length}</div>
+          <div style="font-size:11px;color:var(--text2)">preguntas débiles</div>
+        </div>
+        <div style="flex:1;min-width:100px;padding:12px;background:rgba(240,90,90,.08);border-radius:8px;border:1px solid rgba(240,90,90,.15);text-align:center">
+          <div style="font-size:28px;font-weight:700;font-family:var(--mono);color:var(--red)">${Math.round(stats[weak[0].id].correct/stats[weak[0].id].seen*100)}%</div>
+          <div style="font-size:11px;color:var(--text2)">peor accuracy</div>
+        </div>
       </div>
-      <button class="btn w100" onclick="startRefuerzoMode('reinforcement')" ${weak.length===0?'disabled':''} style="background:rgba(240,90,90,.12);color:var(--red);border:1px solid rgba(240,90,90,.2)">⚡ Iniciar refuerzo →</button>
-    </div>
-    <!-- Mixto -->
-    <div class="card">
-      <div class="flex aic g3 mb3"><div style="font-size:24px">🎯</div><div><h3 style="font-size:14px;font-weight:600">Aleatorio</h3><p style="font-size:11px;color:var(--text3)">Práctica general</p></div></div>
-      <p style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:14px">Simulacro aleatorio de todo el banco para mantener el ritmo.</p>
-      <div style="background:rgba(245,200,66,.08);border-radius:6px;padding:10px 13px;margin-bottom:14px">
-        <span style="font-size:26px;font-weight:700;font-family:var(--mono);color:var(--yellow)">${qs.length}</span>
-        <span style="font-size:12px;color:var(--text2);margin-left:6px">preguntas disponibles</span>
+      <div style="margin-bottom:14px">
+        <label style="font-size:12px;color:var(--text2);margin-bottom:8px;display:block">¿Cuántas preguntas? <span id="weak-n-val" style="font-weight:700;color:var(--red)">${Math.min(10,weak.length)}</span></label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          ${[5,10,15,20].filter(n=>n<=weak.length).concat(weak.length>20?[weak.length]:[]).map(n=>`
+            <button onclick="document.getElementById('weak-n-val').textContent=${n};this.dataset.sel='1';document.querySelectorAll('.weak-n-btn').forEach(b=>b.style.fontWeight=b===this?'700':'400');this._n=${n};window._weakN=${n}" class="weak-n-btn"
+              style="padding:6px 14px;border-radius:6px;font-size:12px;font-family:var(--mono);background:${n===Math.min(10,weak.length)?'rgba(240,90,90,.15)':'var(--bg3)'};color:${n===Math.min(10,weak.length)?'var(--red)':'var(--text2)'};border:1px solid ${n===Math.min(10,weak.length)?'rgba(240,90,90,.4)':'var(--border)'};cursor:pointer;transition:all .15s;font-weight:${n===Math.min(10,weak.length)?'700':'400'}"
+              onclick="selectWeakN(this,${n})">${n===weak.length?'Todas ('+n+')':n}</button>
+          `).join('')}
+        </div>
       </div>
-      <button class="btn w100" onclick="startRefuerzoMode('random')" ${qs.length===0?'disabled':''} style="background:rgba(245,200,66,.1);color:var(--yellow);border:1px solid rgba(245,200,66,.2)">🎯 Modo aleatorio →</button>
-    </div>
-    <!-- Flashcards -->
-    <div class="card" style="border-color:rgba(244,114,182,.25)">
-      <div class="flex aic g3 mb3"><div style="font-size:24px">🖼️</div><div><h3 style="font-size:14px;font-weight:600">Flashcards de imágenes</h3><p style="font-size:11px;color:var(--text3)">Repasa con las imágenes de apoyo</p></div></div>
-      <p style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:14px">Ve la imagen, recuerda el concepto y revela el enunciado y la respuesta.</p>
-      <div style="background:rgba(244,114,182,.08);border-radius:6px;padding:10px 13px;margin-bottom:14px">
-        <span style="font-size:26px;font-weight:700;font-family:var(--mono);color:var(--pink)">${qs.filter(q=>q.image).length}</span>
-        <span style="font-size:12px;color:var(--text2);margin-left:6px">preguntas con imagen</span>
+      <div style="margin-bottom:18px;max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:6px">
+        ${weak.slice(0,20).map((q,i)=>{
+          const s=stats[q.id];
+          const acc=Math.round(s.correct/s.seen*100);
+          return `<div style="display:flex;gap:10px;align-items:center;padding:9px 12px;background:var(--bg3);border-radius:7px;border:1px solid var(--border)">
+            <span style="font-size:11px;font-family:var(--mono);color:var(--text3);width:22px;flex-shrink:0">#${i+1}</span>
+            <div style="flex:1;min-width:0;font-size:12px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${q.statement}</div>
+            <div style="font-size:14px;font-weight:700;font-family:var(--mono);color:${acc<40?'var(--red)':'var(--yellow)'};flex-shrink:0">${acc}%</div>
+          </div>`;
+        }).join('')}
+        ${weak.length>20?`<div style="text-align:center;font-size:11px;color:var(--text3);padding:4px">... y ${weak.length-20} más</div>`:''}
       </div>
-      <button class="btn w100" onclick="startFlashcards()" ${qs.filter(q=>q.image).length===0?'disabled':''} style="background:rgba(244,114,182,.12);color:var(--pink);border:1px solid rgba(244,114,182,.25)">🖼️ Iniciar flashcards →</button>
-    </div>
+      <button class="btn btn-lg w100" onclick="launchWeakExam()" style="background:rgba(240,90,90,.15);color:var(--red);border:1px solid rgba(240,90,90,.3);font-size:15px">
+        ⚡ Iniciar simulacro de preguntas débiles
+      </button>
+    `}
   </div>
 
-  ${weak.length?`
-  <div class="card">
-    <div class="flex jcb aic mb4"><h3 style="font-size:14px;font-weight:600">Top 10 Preguntas Débiles</h3><span style="color:var(--red)">📉</span></div>
-    ${weak.slice(0,10).map((q,i)=>{
-      const s=stats[q.id];
-      const acc=Math.round(s.correct/s.seen*100);
-      return `<div style="display:flex;gap:10px;align-items:center;padding:11px 13px;background:var(--bg3);border-radius:7px;border:1px solid var(--border);margin-bottom:7px">
-        <span style="font-size:11px;font-family:var(--mono);color:var(--text3);width:20px">#${i+1}</span>
-        <div style="flex:1;min-width:0">
-          <p style="font-size:12px;line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${q.statement}</p>
-          <div class="flex g2 mt1" style="margin-top:4px">
-            <span class="badge ${catBadge[q.category]}" style="font-size:9px">${catLabel[q.category]}</span>
-            ${q.subcategory?`<span class="tag" style="font-size:9px">${q.subcategory}</span>`:''}
-            <span style="font-size:11px;color:var(--text3)">${s.seen} intentos</span>
-          </div>
+  <!-- ── SIMULACRO REPETICIÓN ESPACIADA ── -->
+  <div class="card mb4" style="border-color:rgba(79,142,247,.3)">
+    <div class="flex aic g3 mb4">
+      <div style="width:44px;height:44px;border-radius:12px;background:rgba(79,142,247,.12);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">🕐</div>
+      <div>
+        <h2 style="font-size:16px;font-weight:700">Simulacro — Repetición Espaciada</h2>
+        <p style="font-size:12px;color:var(--text2);margin-top:2px">Algoritmo SM-2: repasa en el momento exacto para retención a largo plazo.</p>
+      </div>
+    </div>
+    ${due.length===0 ? `
+      <div style="padding:16px;background:rgba(52,196,124,.08);border-radius:8px;border:1px solid rgba(52,196,124,.2);font-size:13px;color:var(--green);text-align:center">
+        🎉 ¡Estás al día! No hay preguntas pendientes para hoy.
+      </div>` : `
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px">
+        <div style="flex:1;min-width:100px;padding:12px;background:rgba(79,142,247,.08);border-radius:8px;border:1px solid rgba(79,142,247,.15);text-align:center">
+          <div style="font-size:28px;font-weight:700;font-family:var(--mono);color:var(--accent)">${due.length}</div>
+          <div style="font-size:11px;color:var(--text2)">para repasar hoy</div>
         </div>
-        <div style="text-align:right;flex-shrink:0">
-          <div style="font-size:20px;font-weight:700;font-family:var(--mono);color:${acc<30?'var(--red)':'var(--yellow)'}">${acc}%</div>
-          <div style="font-size:9px;color:var(--text3)">aciertos</div>
+        <div style="flex:1;min-width:100px;padding:12px;background:rgba(79,142,247,.08);border-radius:8px;border:1px solid rgba(79,142,247,.15);text-align:center">
+          <div style="font-size:28px;font-weight:700;font-family:var(--mono);color:var(--accent)">${qs.length-due.length}</div>
+          <div style="font-size:11px;color:var(--text2)">dominadas</div>
         </div>
-      </div>`;
-    }).join('')}
-  </div>`:''}`;
+      </div>
+      <div style="margin-bottom:18px">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:8px">Próximas a repasar:</div>
+        <div style="display:flex;flex-direction:column;gap:5px;max-height:160px;overflow-y:auto">
+          ${due.slice(0,8).map(q=>{
+            const s=stats[q.id]||{};
+            return `<div style="display:flex;gap:8px;align-items:center;padding:8px 11px;background:var(--bg3);border-radius:6px;border:1px solid var(--border)">
+              <span style="font-size:18px">📖</span>
+              <div style="flex:1;min-width:0;font-size:12px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${q.statement}</div>
+              ${s.nextReview?`<span style="font-size:10px;font-family:var(--mono);color:var(--text3);flex-shrink:0">${s.nextReview}</span>`:''}
+            </div>`;
+          }).join('')}
+          ${due.length>8?`<div style="text-align:center;font-size:11px;color:var(--text3);padding:4px">... y ${due.length-8} más</div>`:''}
+        </div>
+      </div>
+      <button class="btn btn-p btn-lg w100" onclick="launchSpacedExam()">
+        🕐 Iniciar repaso espaciado (${due.length} preguntas)
+      </button>
+    `}
+  </div>
+
+  <!-- ── FLASHCARDS ── -->
+  <div class="card mb4" style="border-color:rgba(244,114,182,.25)">
+    <div class="flex aic g3 mb4">
+      <div style="width:44px;height:44px;border-radius:12px;background:rgba(244,114,182,.12);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">🖼️</div>
+      <div>
+        <h2 style="font-size:16px;font-weight:700">Flashcards de imágenes</h2>
+        <p style="font-size:12px;color:var(--text2);margin-top:2px">Ve la imagen, recuerda el concepto y revela la respuesta.</p>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px">
+      <div style="flex:1;min-width:100px;padding:12px;background:rgba(244,114,182,.08);border-radius:8px;border:1px solid rgba(244,114,182,.15);text-align:center">
+        <div style="font-size:28px;font-weight:700;font-family:var(--mono);color:var(--pink)">${qs.filter(q=>q.image).length}</div>
+        <div style="font-size:11px;color:var(--text2)">con imagen</div>
+      </div>
+    </div>
+    <button class="btn btn-lg w100" onclick="startFlashcards()" ${qs.filter(q=>q.image).length===0?'disabled':''} style="background:rgba(244,114,182,.12);color:var(--pink);border:1px solid rgba(244,114,182,.25)">
+      🖼️ Iniciar flashcards
+    </button>
+  </div>`;
+}
+
+let _weakN=10;
+function selectWeakN(btn,n){
+  _weakN=n;
+  document.getElementById('weak-n-val').textContent=n;
+  document.querySelectorAll('.weak-n-btn').forEach(b=>{
+    const isMe=b===btn;
+    b.style.fontWeight=isMe?'700':'400';
+    b.style.background=isMe?'rgba(240,90,90,.15)':'var(--bg3)';
+    b.style.color=isMe?'var(--red)':'var(--text2)';
+    b.style.border=isMe?'1px solid rgba(240,90,90,.4)':'1px solid var(--border)';
+  });
+}
+
+function launchWeakExam(){
+  const qs=DB.questions();
+  const stats=DB.stats();
+  const weak=qs.filter(q=>stats[q.id]&&stats[q.id].seen>=2).sort((a,b)=>{
+    return (stats[a.id].correct/stats[a.id].seen)-(stats[b.id].correct/stats[b.id].seen);
+  });
+  const n=_weakN||10;
+  const selected=weak.slice(0,n);
+  if(!selected.length){ toast('No hay preguntas con historial aún','error'); return; }
+  launchDirectExam(selected,'⚡ Refuerzo — Preguntas Débiles','reinforcement');
+}
+
+function launchSpacedExam(){
+  const qs=DB.questions();
+  const stats=DB.stats();
+  const due=qs.filter(q=>isDue(stats[q.id])).sort((a,b)=>{
+    const da=(stats[a.id]||{}).nextReview||'0';
+    const db=(stats[b.id]||{}).nextReview||'0';
+    return da<db?-1:1;
+  });
+  if(!due.length){ toast('¡No hay preguntas para repasar hoy!','info'); return; }
+  launchDirectExam(due,'🕐 Repetición Espaciada','spaced');
+}
+
+function launchDirectExam(selected, name, mode){
+  // Navigate to simulacro page WITHOUT calling renderSimConfig
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('pg-simulacro').classList.add('active');
+  document.querySelectorAll('.bnav-btn').forEach(b=>b.classList.remove('active'));
+  const bn=document.getElementById('bnav-simulacro'); if(bn) bn.classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('main').scrollTo(0,0);
+  document.getElementById('sim-config').style.display='none';
+
+  activeExam={
+    id:uid(), name, mode,
+    questions:selected, answers:{}, marked:{}, currentIdx:0,
+    startTime:Date.now(), elapsed:0, timeLimitSecs:0,
+  };
+  renderActiveExam();
 }
 
 function renderSemanas(){
@@ -1999,10 +2105,8 @@ function startWeekExam(w){
   goto('simulacro');
   setTimeout(()=>{
     simFilters={cats:[],diffs:[],subs:[],weeks:[w],mode:'random',timeLimitMins:0};
-    // Re-render so UI shows selected week
     renderSimConfig();
-    // Start immediately after short delay
-    setTimeout(()=>startExam(),50);
+    setTimeout(()=>{ setSliderVal(20); startExam(); },100);
   },50);
 }
 
@@ -2129,15 +2233,16 @@ function closeFlashcards(){
 }
 
 function startRefuerzoMode(mode){
-  goto('simulacro');
-  setTimeout(()=>{
-    simFilters={cats:[],diffs:[],mode};
-    selMode(mode);
-    // Auto-set 20 questions and start
-    const nEl=document.getElementById('sim-n');
-    if(nEl){nEl.value=20;document.getElementById('sim-n-val').textContent=20;}
-    startExam();
-  },50);
+  simFilters={cats:[],diffs:[],subs:[],weeks:[],mode,timeLimitMins:0};
+  // Show simulacro page but skip renderSimConfig (which resets simFilters)
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('pg-simulacro').classList.add('active');
+  document.querySelectorAll('.bnav-btn').forEach(b=>b.classList.remove('active'));
+  const bn=document.getElementById('bnav-simulacro'); if(bn) bn.classList.add('active');
+  document.getElementById('main').scrollTo(0,0);
+  // Set 20 questions and go straight to exam
+  document.getElementById('sim-n').value=20;
+  startExam();
 }
 
 // ═══════════════════════════════════════
