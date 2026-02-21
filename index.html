@@ -10,7 +10,7 @@
   --bg:#0d0f14; --bg2:#13161e; --bg3:#1a1e2a; --bg4:#222636;
   --border:#2a2f3f; --border2:#353b50;
   --text:#e8eaf0; --text2:#9ba3bc; --text3:#636b83;
-  --accent:#4f8ef7; --accent2:#3a7aee;
+  --accent:#7eb8f7; --accent2:#5a9ef5;
   --green:#34c47c; --red:#f05a5a; --yellow:#f5c842; --orange:#f5874f;
   --pink:#f472b6;
   --mono:'IBM Plex Mono',monospace; --sans:'Sora',sans-serif;
@@ -154,23 +154,32 @@ td{padding:10px 12px;border-bottom:1px solid var(--border)}
 input[type=range]{
   -webkit-appearance:none;appearance:none;
   height:6px;border-radius:3px;outline:none;
-  background:linear-gradient(to right, var(--accent) 0%, var(--accent) 15%, var(--border2) 15%, var(--border2) 100%);
+  background:var(--border2);
+  padding:0;margin:0;display:block;
+}
+input[type=range]::-webkit-slider-runnable-track{
+  height:6px;border-radius:3px;
 }
 input[type=range]::-webkit-slider-thumb{
   -webkit-appearance:none;appearance:none;
-  width:20px;height:20px;border-radius:50%;
+  width:22px;height:22px;border-radius:50%;
   background:var(--accent);cursor:pointer;
-  box-shadow:0 0 0 3px rgba(79,142,247,.2);
-  transition:box-shadow .15s;
+  border:3px solid var(--bg2);
+  box-shadow:0 0 0 2px var(--accent), 0 2px 6px rgba(0,0,0,.25);
+  transition:box-shadow .15s, transform .15s;
+  margin-top:-8px;
 }
-input[type=range]::-webkit-slider-thumb:hover{box-shadow:0 0 0 5px rgba(79,142,247,.25)}
+input[type=range]::-webkit-slider-thumb:hover{
+  box-shadow:0 0 0 4px var(--accent), 0 2px 8px rgba(0,0,0,.3);
+  transform:scale(1.1);
+}
 input[type=range]::-moz-range-thumb{
-  width:20px;height:20px;border-radius:50%;border:none;
+  width:18px;height:18px;border-radius:50%;border:3px solid var(--bg2);
   background:var(--accent);cursor:pointer;
-  box-shadow:0 0 0 3px rgba(79,142,247,.2);
+  box-shadow:0 0 0 2px var(--accent);
 }
 input[type=range]::-moz-range-track{height:6px;border-radius:3px;background:var(--border2)}
-input[type=range]::-moz-range-progress{background:var(--accent);border-radius:3px}
+input[type=range]::-moz-range-progress{background:var(--accent);border-radius:3px;height:6px}
 .mode-card.sel{border-color:var(--accent);background:rgba(79,142,247,.08)}
 .mode-card h4{font-size:13px;font-weight:600;margin-bottom:3px}
 .mode-card p{font-size:11px;color:var(--text3);line-height:1.4}
@@ -481,13 +490,60 @@ function sm2Update(stats, isCorrect){
 function todayStr(){ return new Date().toISOString().split('T')[0]; }
 function isDue(s){ return !s || !s.nextReview || s.nextReview <= todayStr(); }
 
-function updateSliderFill(el){
-  const min=parseFloat(el.min)||0;
-  const max=parseFloat(el.max)||100;
-  const val=parseFloat(el.value)||0;
-  const pct=((val-min)/(max-min)*100).toFixed(1);
-  el.style.background=`linear-gradient(to right, var(--accent) 0%, var(--accent) ${pct}%, var(--border2) ${pct}%, var(--border2) 100%)`;
+// ═══════════════════════════════════════
+// CUSTOM SLIDER
+// ═══════════════════════════════════════
+const SLIDER_MIN=0, SLIDER_MAX=100, SLIDER_STEP=5;
+let _sliderDragging=false;
+
+function sliderPct(val){ return (val-SLIDER_MIN)/(SLIDER_MAX-SLIDER_MIN); }
+
+function setSliderVal(val){
+  val=Math.round(val/SLIDER_STEP)*SLIDER_STEP;
+  val=Math.max(SLIDER_MIN,Math.min(SLIDER_MAX,val));
+  const ratio=(val-SLIDER_MIN)/(SLIDER_MAX-SLIDER_MIN); // 0..1
+  const THUMB=10; // half of thumb width (20px)
+  const fill=document.getElementById('slider-fill');
+  const thumb=document.getElementById('slider-thumb');
+  const track=document.getElementById('custom-slider');
+  document.getElementById('sim-n').value=val;
+  document.getElementById('sim-n-val').textContent=val;
+  if(track){
+    const W=track.offsetWidth;
+    const pos=THUMB + ratio*(W - THUMB*2); // pixel position within track
+    const pct=(pos/W*100).toFixed(4);
+    if(fill) fill.style.width=pct+'%';
+    if(thumb) thumb.style.left=pct+'%';
+  }
+  const accent=getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+  if(fill) fill.style.background=accent;
+  if(thumb){ thumb.style.background=accent; thumb.style.boxShadow=`0 0 0 2px ${accent},0 2px 6px rgba(0,0,0,.3)`; }
 }
+
+function sliderDown(e){
+  _sliderDragging=true;
+  sliderMove(e);
+  const up=()=>{ _sliderDragging=false; document.removeEventListener('mousemove',sliderMove); document.removeEventListener('mouseup',up); document.removeEventListener('touchmove',sliderMove); document.removeEventListener('touchend',up); };
+  document.addEventListener('mousemove',sliderMove);
+  document.addEventListener('mouseup',up);
+  document.addEventListener('touchmove',sliderMove,{passive:true});
+  document.addEventListener('touchend',up);
+}
+
+function sliderMove(e){
+  if(!_sliderDragging) return;
+  const track=document.getElementById('custom-slider');
+  if(!track) return;
+  const rect=track.getBoundingClientRect();
+  const THUMB=10;
+  const clientX=e.touches?e.touches[0].clientX:e.clientX;
+  // Map click position to 0..1 accounting for thumb radius
+  const ratio=Math.max(0,Math.min(1,(clientX-rect.left-THUMB)/(rect.width-THUMB*2)));
+  const raw=SLIDER_MIN+ratio*(SLIDER_MAX-SLIDER_MIN);
+  setSliderVal(raw);
+}
+
+function updateSliderFill(el){} // kept for compat, custom slider handles it
 
 // ═══════════════════════════════════════
 // NAVIGATION
@@ -865,18 +921,25 @@ function renderSimConfig(){
       <input id="sim-name" placeholder="Ej: Repaso semana 3 — Cardiología">
     </div>
     <div class="card mb4">
-      <div class="flex jcb aic" style="margin-bottom:18px">
+      <div class="flex jcb aic" style="margin-bottom:20px">
         <label style="font-size:13px;font-weight:600">Número de preguntas</label>
-        <span id="sim-n-val" style="font-size:24px;font-weight:700;font-family:var(--mono);color:var(--accent)">20</span>
+        <span id="sim-n-val" style="font-size:24px;font-weight:700;font-family:var(--mono);color:var(--accent)">0</span>
       </div>
-      <div style="position:relative;padding:0 2px">
-        <input type="range" id="sim-n" min="5" max="100" step="5" value="20"
-          oninput="document.getElementById('sim-n-val').textContent=this.value;updateSliderFill(this)"
-          style="width:100%;accentColor:var(--accent);background:none;border:none;padding:0;cursor:pointer;display:block;margin:0">
+      <!-- Custom slider -->
+      <div id="custom-slider" style="position:relative;height:22px;cursor:pointer;user-select:none"
+        onmousedown="sliderDown(event)" ontouchstart="sliderDown(event)">
+        <!-- Track background -->
+        <div style="position:absolute;top:50%;left:0;right:0;height:6px;border-radius:3px;background:var(--border2);transform:translateY(-50%)"></div>
+        <!-- Track fill -->
+        <div id="slider-fill" style="position:absolute;top:50%;left:0;width:0%;height:6px;border-radius:3px;background:var(--accent);transform:translateY(-50%)"></div>
+        <!-- Thumb -->
+        <div id="slider-thumb" style="position:absolute;top:50%;left:0%;width:20px;height:20px;border-radius:50%;background:var(--accent);border:3px solid var(--bg2);box-shadow:0 0 0 2px var(--accent),0 2px 6px rgba(0,0,0,.3);transform:translate(-50%,-50%);transition:box-shadow .15s"></div>
       </div>
-      <div class="flex jcb mt2" style="padding:0 2px">
-        <span style="font-size:11px;font-family:var(--mono);color:var(--text3)">5</span>
-        ${[20,40,60].map(n=>`<button onclick="document.getElementById('sim-n').value=${n};document.getElementById('sim-n-val').textContent=${n};updateSliderFill(document.getElementById('sim-n'))" style="font-size:11px;font-family:var(--mono);color:var(--text3);background:none;border:none;cursor:pointer">${n}</button>`).join('')}
+      <input type="hidden" id="sim-n" value="0">
+      <!-- Labels -->
+      <div style="display:flex;justify-content:space-between;margin-top:8px">
+        <span style="font-size:11px;font-family:var(--mono);color:var(--text3)">0</span>
+        ${[25,50,75].map(n=>`<button onclick="setSliderVal(${n})" style="font-size:11px;font-family:var(--mono);color:var(--text3);background:none;border:none;cursor:pointer;padding:0">${n}</button>`).join('')}
         <span style="font-size:11px;font-family:var(--mono);color:var(--text3)">100</span>
       </div>
     </div>
@@ -938,6 +1001,7 @@ function renderSimConfig(){
     <button class="btn btn-p btn-lg w100" onclick="startExam()">Iniciar simulacro</button>
   </div>`;
   simFilters={cats:[],diffs:[],subs:[],weeks:[],mode:'random',timeLimitMins:0};
+  setTimeout(()=>setSliderVal(0),10);
 }
 
 let simFilters={cats:[],diffs:[],subs:[],weeks:[],mode:'random',timeLimitMins:0};
@@ -958,18 +1022,24 @@ function getAllWeeks(){
   qs.forEach(q=>weeks.add(getQuestionWeek(q)));
   return [...weeks].sort((a,b)=>a-b);
 }
-function getAllSubcategories(){
+function getAllSubcategories(cats){
   const qs=DB.questions();
   const subs=new Set();
-  qs.forEach(q=>{ if(q.subcategory&&q.subcategory.trim()) subs.add(q.subcategory.trim()); });
+  qs.forEach(q=>{
+    if(cats&&cats.length&&!cats.includes(q.category)) return;
+    if(q.subcategory&&q.subcategory.trim()) subs.add(q.subcategory.trim());
+  });
   return [...subs].sort();
 }
 function renderSubcategoryFilterBtns(){
-  const subs=getAllSubcategories();
-  if(!subs.length) return `<span style="font-size:12px;color:var(--text3)">Aún no hay subcategorías en tus preguntas</span>`;
+  const subs=getAllSubcategories(simFilters.cats);
+  if(!subs.length) return `<span style="font-size:12px;color:var(--text3)">${simFilters.cats.length?'No hay subcategorías para esta categoría':'Aún no hay subcategorías en tus preguntas'}</span>`;
+  // Remove selected subs that no longer apply
+  simFilters.subs=simFilters.subs.filter(s=>subs.includes(s));
   return subs.map(s=>{
     const sid='sub-btn-'+s.replace(/[^a-zA-Z0-9]/g,'_');
-    return `<button class="tag" id="${sid}" data-sub="${s}" onclick="toggleSimSub(this,'${s.replace(/'/g,"\\'")}')" style="cursor:pointer;padding:6px 12px;font-size:12px;opacity:.45;border:1px solid transparent;transition:all .15s;font-family:var(--sans)">${s}</button>`;
+    const isSel=simFilters.subs.includes(s);
+    return `<button class="tag" id="${sid}" data-sub="${s}" onclick="toggleSimSub(this,'${s.replace(/'/g,"\\'")}')" style="cursor:pointer;padding:6px 12px;font-size:12px;opacity:${isSel?'1':'.45'};border:${isSel?'1px solid currentColor':'1px solid transparent'};transition:all .15s;font-family:var(--sans)">${s}</button>`;
   }).join('');
 }
 function renderWeekFilterBtns(){
@@ -998,6 +1068,11 @@ function toggleSimFilter(type,val){
   const idx=arr.indexOf(val);
   if(idx>=0){ arr.splice(idx,1); btn.style.opacity='.35'; btn.style.border='1px solid transparent'; }
   else { arr.push(val); btn.style.opacity='1'; btn.style.border='1px solid currentColor'; }
+  // Refresh subcategory buttons when category filter changes
+  if(type==='cat'){
+    const subContainer=document.getElementById('sub-filter-btns');
+    if(subContainer) subContainer.innerHTML=renderSubcategoryFilterBtns();
+  }
 }
 function selMode(m){
   simFilters.mode=m;
@@ -2003,14 +2078,14 @@ function openImgModal(qId){
 // THEME & COLOR
 // ═══════════════════════════════════════
 const ACCENT_COLORS = [
-  {name:'Azul',    dark:{a:'#4f8ef7',a2:'#3a7aee'}, light:{a:'#3b7ef0',a2:'#2a6de0'}},
-  {name:'Rosa',    dark:{a:'#f472b6',a2:'#ec4899'}, light:{a:'#db2777',a2:'#be185d'}},
-  {name:'Violeta', dark:{a:'#a78bfa',a2:'#8b5cf6'}, light:{a:'#7c3aed',a2:'#6d28d9'}},
-  {name:'Verde',   dark:{a:'#34c47c',a2:'#22a566'}, light:{a:'#17a058',a2:'#0d8a48'}},
-  {name:'Naranja', dark:{a:'#f5874f',a2:'#e06b30'}, light:{a:'#c8622a',a2:'#b04d1a'}},
-  {name:'Rojo',    dark:{a:'#f05a5a',a2:'#dc3535'}, light:{a:'#dc3a3a',a2:'#c42020'}},
-  {name:'Cyan',    dark:{a:'#22d3ee',a2:'#06b6d4'}, light:{a:'#0891b2',a2:'#0e7490'}},
-  {name:'Menta',   dark:{a:'#6ee7b7',a2:'#34d399'}, light:{a:'#059669',a2:'#047857'}},
+  {name:'Azul',    dark:{a:'#7eb8f7',a2:'#5a9ef5'}, light:{a:'#4a90e2',a2:'#3578cc'}},
+  {name:'Rosa',    dark:{a:'#f9a8d4',a2:'#f472b6'}, light:{a:'#e879a8',a2:'#d1598a'}},
+  {name:'Violeta', dark:{a:'#c4b5fd',a2:'#a78bfa'}, light:{a:'#9b72f5',a2:'#7c52e0'}},
+  {name:'Verde',   dark:{a:'#6ee7b7',a2:'#34d399'}, light:{a:'#2dab7a',a2:'#1d9068'}},
+  {name:'Naranja', dark:{a:'#fdba74',a2:'#fb923c'}, light:{a:'#e07a40',a2:'#c8622a'}},
+  {name:'Rojo',    dark:{a:'#fca5a5',a2:'#f87171'}, light:{a:'#e05555',a2:'#cc3a3a'}},
+  {name:'Cyan',    dark:{a:'#67e8f9',a2:'#22d3ee'}, light:{a:'#0ea5c9',a2:'#0886a8'}},
+  {name:'Menta',   dark:{a:'#a7f3d0',a2:'#6ee7b7'}, light:{a:'#1eb87a',a2:'#10965e'}},
 ];
 
 function applyAccentColor(idx){
@@ -2019,10 +2094,12 @@ function applyAccentColor(idx){
   const {a,a2}=isLight?col.light:col.dark;
   document.documentElement.style.setProperty('--accent',a);
   document.documentElement.style.setProperty('--accent2',a2);
-  // Also update light/dark body overrides inline
   localStorage.setItem('mr_accent_idx',idx);
-  // Re-fill any visible sliders
-  document.querySelectorAll('input[type=range]').forEach(updateSliderFill);
+  // Refresh custom slider colors
+  const fill=document.getElementById('slider-fill');
+  const thumb=document.getElementById('slider-thumb');
+  if(fill) fill.style.background=a;
+  if(thumb){ thumb.style.background=a; thumb.style.boxShadow=`0 0 0 2px ${a},0 2px 6px rgba(0,0,0,.3)`; }
 }
 
 function openColorPicker(){
