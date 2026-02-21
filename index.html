@@ -1855,6 +1855,16 @@ function renderRefuerzo(){
       </div>
       <button class="btn w100" onclick="startRefuerzoMode('random')" ${qs.length===0?'disabled':''} style="background:rgba(245,200,66,.1);color:var(--yellow);border:1px solid rgba(245,200,66,.2)">🎯 Modo aleatorio →</button>
     </div>
+    <!-- Flashcards -->
+    <div class="card" style="border-color:rgba(244,114,182,.25)">
+      <div class="flex aic g3 mb3"><div style="font-size:24px">🖼️</div><div><h3 style="font-size:14px;font-weight:600">Flashcards de imágenes</h3><p style="font-size:11px;color:var(--text3)">Repasa con las imágenes de apoyo</p></div></div>
+      <p style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:14px">Ve la imagen, recuerda el concepto y revela el enunciado y la respuesta.</p>
+      <div style="background:rgba(244,114,182,.08);border-radius:6px;padding:10px 13px;margin-bottom:14px">
+        <span style="font-size:26px;font-weight:700;font-family:var(--mono);color:var(--pink)">${qs.filter(q=>q.image).length}</span>
+        <span style="font-size:12px;color:var(--text2);margin-left:6px">preguntas con imagen</span>
+      </div>
+      <button class="btn w100" onclick="startFlashcards()" ${qs.filter(q=>q.image).length===0?'disabled':''} style="background:rgba(244,114,182,.12);color:var(--pink);border:1px solid rgba(244,114,182,.25)">🖼️ Iniciar flashcards →</button>
+    </div>
   </div>
 
   ${weak.length?`
@@ -1994,6 +2004,128 @@ function startWeekExam(w){
     // Start immediately after short delay
     setTimeout(()=>startExam(),50);
   },50);
+}
+
+// ═══════════════════════════════════════
+// FLASHCARDS DE IMÁGENES
+// ═══════════════════════════════════════
+let flashcardState=null;
+
+function startFlashcards(){
+  const qs=shuffle(DB.questions().filter(q=>q.image));
+  if(!qs.length){ toast('No hay preguntas con imágenes','error'); return; }
+  flashcardState={ qs, idx:0, revealed:false };
+  renderFlashcard();
+}
+
+function renderFlashcard(){
+  const {qs,idx,revealed}=flashcardState;
+  const q=qs[idx];
+  const total=qs.length;
+  const correctOpt=q.options.find(o=>o.id===q.correct_id);
+
+  // Build overlay over refuerzo page
+  let overlay=document.getElementById('flashcard-overlay');
+  if(!overlay){
+    overlay=document.createElement('div');
+    overlay.id='flashcard-overlay';
+    overlay.style.cssText='position:fixed;inset:0;z-index:990;background:var(--bg);overflow-y:auto;animation:fadeIn .2s ease;padding:20px 16px 40px;display:flex;flex-direction:column';
+    document.body.appendChild(overlay);
+  }
+
+  overlay.innerHTML=`
+    <div style="max-width:600px;margin:0 auto;width:100%;display:flex;flex-direction:column;gap:16px">
+      <!-- Header -->
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <button onclick="closeFlashcards()" style="display:flex;align-items:center;gap:6px;background:none;border:none;cursor:pointer;color:var(--text2);font-size:13px;font-family:var(--sans);padding:4px">← Salir</button>
+        <span style="font-size:13px;font-weight:600;font-family:var(--mono);color:var(--text2)">${idx+1} / ${total}</span>
+        <button onclick="shuffleFlashcards()" style="background:none;border:none;cursor:pointer;font-size:18px;padding:4px" title="Mezclar">🔀</button>
+      </div>
+
+      <!-- Progress bar -->
+      <div style="background:var(--border2);border-radius:4px;height:4px">
+        <div style="width:${((idx+1)/total*100).toFixed(1)}%;height:4px;border-radius:4px;background:var(--accent);transition:width .3s"></div>
+      </div>
+
+      <!-- Badges -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <span class="badge ${catBadge[q.category]}">${catLabel[q.category]}</span>
+        <span class="badge ${diffBadge[q.difficulty]}">${diffLabel[q.difficulty]}</span>
+        ${q.subcategory?`<span class="tag">${q.subcategory}</span>`:''}
+      </div>
+
+      <!-- IMAGE — always visible -->
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;cursor:zoom-in" onclick="openImgFullscreen('${q.image}')">
+        <img src="${q.image}" style="width:100%;max-height:340px;object-fit:contain;display:block;padding:12px">
+        <div style="padding:8px 14px;background:var(--bg3);border-top:1px solid var(--border);font-size:11px;color:var(--text3);text-align:center">Toca para ampliar 🔍</div>
+      </div>
+
+      <!-- Reveal button or revealed content -->
+      ${!revealed ? `
+      <button onclick="revealFlashcard()" class="btn btn-p btn-lg w100" style="margin-top:4px">
+        👁 Revelar enunciado y respuesta
+      </button>
+      ` : `
+      <!-- Enunciado -->
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:18px;animation:fadeUp .2s ease">
+        <p style="font-size:14px;line-height:1.7;color:var(--text)">${q.statement}</p>
+      </div>
+
+      <!-- Respuesta correcta -->
+      <div style="background:rgba(52,196,124,.08);border:1px solid rgba(52,196,124,.25);border-radius:var(--rl);padding:16px;animation:fadeUp .25s ease">
+        <div style="font-size:11px;font-weight:600;color:var(--green);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">✓ Respuesta correcta</div>
+        <p style="font-size:14px;color:var(--text);line-height:1.6"><span style="font-family:var(--mono);color:var(--text3);margin-right:6px">${correctOpt.id.toUpperCase()})</span>${correctOpt.text}</p>
+        ${q.explanation?`<div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(52,196,124,.15);font-size:12px;color:var(--text2);line-height:1.6"><strong style="color:var(--green)">💡 </strong>${q.explanation}</div>`:''}
+      </div>
+
+      <!-- Nav buttons -->
+      <div style="display:flex;gap:10px">
+        <button onclick="prevFlashcard()" class="btn btn-g" style="flex:1" ${idx===0?'disabled':''}>← Anterior</button>
+        <button onclick="nextFlashcard()" class="btn btn-p" style="flex:1">${idx===total-1?'🏁 Terminar':'Siguiente →'}</button>
+      </div>
+      `}
+
+      <!-- Dot navigation -->
+      <div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:center;padding-top:4px">
+        ${qs.map((_,i)=>`<div onclick="gotoFlashcard(${i})" style="width:8px;height:8px;border-radius:50%;cursor:pointer;transition:all .15s;background:${i===idx?'var(--accent)':i<idx?'var(--green)':'var(--border2)'}"></div>`).join('')}
+      </div>
+    </div>`;
+}
+
+function revealFlashcard(){
+  flashcardState.revealed=true;
+  renderFlashcard();
+}
+function nextFlashcard(){
+  if(flashcardState.idx>=flashcardState.qs.length-1){ closeFlashcards(); return; }
+  flashcardState.idx++;
+  flashcardState.revealed=false;
+  renderFlashcard();
+  document.getElementById('flashcard-overlay').scrollTo(0,0);
+}
+function prevFlashcard(){
+  if(flashcardState.idx<=0) return;
+  flashcardState.idx--;
+  flashcardState.revealed=false;
+  renderFlashcard();
+  document.getElementById('flashcard-overlay').scrollTo(0,0);
+}
+function gotoFlashcard(i){
+  flashcardState.idx=i;
+  flashcardState.revealed=false;
+  renderFlashcard();
+}
+function shuffleFlashcards(){
+  flashcardState.qs=shuffle(flashcardState.qs);
+  flashcardState.idx=0;
+  flashcardState.revealed=false;
+  renderFlashcard();
+  toast('🔀 Mezcladas','success');
+}
+function closeFlashcards(){
+  const o=document.getElementById('flashcard-overlay');
+  if(o) o.remove();
+  flashcardState=null;
 }
 
 function startRefuerzoMode(mode){
