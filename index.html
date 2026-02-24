@@ -522,13 +522,32 @@ const ImgStore = (() => {
   };
 })();
 
+
+// ═══════════════════════════════════════
+// IMAGE CACHE — resolución rápida de imágenes __idb__ para rendering
+// ═══════════════════════════════════════
+const ImgCache = {
+  _c: {},
+  async preloadAll() {
+    try { this._c = (await ImgStore.getAll()) || {}; } catch(e) { this._c = {}; }
+  },
+  get(id) { return this._c[id] || null; },
+  set(id, b64) { this._c[id] = b64; },
+  del(id) { delete this._c[id]; },
+  resolve(q) {
+    if (!q || !q.image) return null;
+    if (q.image === '__idb__') return this._c[q.id] || null;
+    return q.image;
+  }
+};
+
 async function migrateImagesToIndexedDB() {
   const qs = DB.questions();
   const toMigrate = qs.filter(q => q.image && q.image.startsWith('data:'));
   if (!toMigrate.length) return;
   let count = 0;
   for (const q of toMigrate) {
-    try { await ImgStore.save(q.id, q.image); q.image = '__idb__'; count++; } catch(e) {}
+    try { await ImgStore.save(q.id, q.image); ImgCache.set(q.id, q.image); q.image = '__idb__'; count++; } catch(e) {}
   }
   if (count > 0) { try { DB.saveQuestions(qs); } catch(e) {} }
 }
@@ -922,8 +941,8 @@ function saveQuestion(){
   if(isEdit){const idx=qs.findIndex(x=>x.id===editingQId);qs[idx]=qToSave;}
   else{qs.push(qToSave);}
   async function doSave(){
-    if(imgData&&imgData.startsWith('data:')) await ImgStore.save(q.id,imgData);
-    else if(!imgData) await ImgStore.del(q.id);
+    if(imgData&&imgData.startsWith('data:')){ await ImgStore.save(q.id,imgData); ImgCache.set(q.id,imgData); }
+    else if(!imgData){ await ImgStore.del(q.id); ImgCache.del(q.id); }
     try{ DB.saveQuestions(qs); }
     catch(e){
       if(e.name==='QuotaExceededError'||e.code===22||e.code===1014){
@@ -1014,10 +1033,10 @@ function renderPreguntas(){
             ${o.id===q.correct_id?'<span style="font-size:11px;color:var(--green);font-weight:700">✓</span>':''}
           </div>`).join('')}
         ${q.explanation?`<div style="margin-top:8px;padding:9px 12px;background:rgba(79,142,247,.08);border:1px solid rgba(79,142,247,.15);border-radius:6px;font-size:12px;color:var(--text2);line-height:1.55"><strong style="color:var(--accent)">Explicación: </strong>${q.explanation}</div>`:''}
-        ${q.image?`
+        ${ImgCache.resolve(q)?`
         <div style="margin-top:10px">
           <p style="font-size:11px;color:var(--text3);margin-bottom:6px">🖼️ Imagen de referencia</p>
-          <img src="${q.image}" style="max-width:100%;max-height:320px;border-radius:var(--r);border:1px solid var(--border);display:block;cursor:pointer" onclick="openImgModal('${q.id}')" title="Clic para ampliar">
+          <img src="${ImgCache.resolve(q)}" style="max-width:100%;max-height:320px;border-radius:var(--r);border:1px solid var(--border);display:block;cursor:pointer" onclick="openImgModal('${q.id}')" title="Clic para ampliar">
         </div>`:''}
       </div>
     </div>`;
@@ -1617,10 +1636,10 @@ function showResults(exam){
               }).join('')}
             </div>
             ${q.explanation?`<div style="padding:10px 13px;background:rgba(79,142,247,.08);border:1px solid rgba(79,142,247,.18);border-radius:6px;font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:${q.image?'12px':'0'}"><strong style="color:var(--accent)">💡 Explicación: </strong>${q.explanation}</div>`:''}
-            ${q.image?`
+            ${ImgCache.resolve(q)?`
             <div style="margin-top:${q.explanation?'0':'0'}">
               <p style="font-size:11px;color:var(--text3);margin-bottom:7px;display:flex;align-items:center;gap:5px"><span>🖼️</span> Imagen de referencia</p>
-              <img src="${q.image}" style="max-width:100%;max-height:400px;border-radius:var(--r);border:1px solid var(--border);display:block;cursor:pointer;transition:opacity .2s" onclick="openImgFullscreen(this.src)" title="Clic para ampliar" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+              <img src="${ImgCache.resolve(q)}" style="max-width:100%;max-height:400px;border-radius:var(--r);border:1px solid var(--border);display:block;cursor:pointer;transition:opacity .2s" onclick="openImgFullscreen(this.src)" title="Clic para ampliar" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
               <p style="font-size:10px;color:var(--text3);margin-top:4px">🔍 Clic para ampliar</p>
             </div>`:''}
           </div>`;
@@ -1723,7 +1742,7 @@ function answerDetailHTML(d,q){
         </div>`;
       }).join('')}
       ${q.explanation?`<div style="margin-top:8px;padding:9px 12px;background:rgba(79,142,247,.08);border:1px solid rgba(79,142,247,.15);border-radius:6px;font-size:12px;color:var(--text2);line-height:1.55"><strong style="color:var(--accent)">Explicación: </strong>${q.explanation}</div>`:''}
-      ${q.image?`<div style="margin-top:10px"><p style="font-size:11px;color:var(--text3);margin-bottom:5px">🖼️ Imagen de referencia</p><img src="${q.image}" style="max-width:100%;max-height:260px;border-radius:var(--r);border:1px solid var(--border);cursor:pointer" onclick="openImgFullscreen(this.src)"></div>`:''}
+      ${ImgCache.resolve(q)?`<div style="margin-top:10px"><p style="font-size:11px;color:var(--text3);margin-bottom:5px">🖼️ Imagen de referencia</p><img src="${ImgCache.resolve(q)}" style="max-width:100%;max-height:260px;border-radius:var(--r);border:1px solid var(--border);cursor:pointer" onclick="openImgFullscreen(this.src)"></div>`:''}
     </div>
   </div>`;
 }
@@ -2285,8 +2304,8 @@ function renderFlashcard(){
       </div>
 
       <!-- IMAGE — always visible -->
-      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;cursor:zoom-in" onclick="openImgFullscreen('${q.image}')">
-        <img src="${q.image}" style="width:100%;max-height:340px;object-fit:contain;display:block;padding:12px">
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;cursor:zoom-in" onclick="openImgFullscreen('${ImgCache.resolve(q)||''}')"> 
+        <img src="${ImgCache.resolve(q)||''}" style="width:100%;max-height:340px;object-fit:contain;display:block;padding:12px">
         <div style="padding:8px 14px;background:var(--bg3);border-top:1px solid var(--border);font-size:11px;color:var(--text3);text-align:center">Toca para ampliar 🔍</div>
       </div>
 
@@ -2464,16 +2483,27 @@ function importBackup(event){
   reader.readAsText(fileRef, 'UTF-8');
 }
 
-function confirmImport(){
+async function confirmImport(){
   const data=window._pendingImport;
   if(!data){ closeModal(); return; }
   try{
-    DB.saveQuestions(data.questions||[]);
+    // Primero guardar en IndexedDB las imágenes que vengan en base64 dentro del JSON
+    const qs = data.questions||[];
+    const withImgs = qs.filter(q=>q.image&&q.image.startsWith('data:'));
+    if(withImgs.length){
+      toast(`⏳ Restaurando ${withImgs.length} imágenes...`,'info');
+      for(const q of withImgs){
+        try{ await ImgStore.save(q.id, q.image); ImgCache.set(q.id, q.image); q.image='__idb__'; }catch(e){}
+      }
+    }
+    DB.saveQuestions(qs);
     DB.saveExams(data.exams||[]);
     DB.saveStats(data.stats||{});
     window._pendingImport=null;
     closeModal();
-    toast(`✅ ${data.questions.length} preguntas importadas`,'success');
+    const imgMsg = withImgs.length ? ` · ${withImgs.length} imágenes restauradas` : '';
+    toast(`✅ ${qs.length} preguntas importadas${imgMsg}`,'success');
+    await ImgCache.preloadAll().catch(()=>{});
     renderDashboard();
   } catch(err){
     toast('❌ Error al guardar: '+err.message,'error');
@@ -2495,9 +2525,17 @@ function openImgFullscreen(src){
   document.body.appendChild(overlay);
 }
 
-function openImgModal(qId){
+async function openImgModal(qId){
   const q=DB.questions().find(x=>x.id===qId);
-  if(q&&q.image) openImgFullscreen(q.image);
+  if(!q||!q.image) return;
+  // Intentar desde cache primero (rápido), luego IndexedDB
+  const cached = ImgCache.resolve(q);
+  if(cached){ openImgFullscreen(cached); return; }
+  if(q.image==='__idb__'){
+    try{ const src=await ImgStore.get(qId); if(src){ ImgCache.set(qId,src); openImgFullscreen(src); } }catch(e){}
+  } else {
+    openImgFullscreen(q.image);
+  }
 }
 
 // ═══════════════════════════════════════
@@ -2576,8 +2614,12 @@ if(localStorage.getItem('mr_theme')==='light'){
 }
 // Restore accent color
 applyAccentColor(parseInt(localStorage.getItem('mr_accent_idx')||'0'));
-migrateImagesToIndexedDB().catch(()=>{});
-renderDashboard();
+// Cargar imágenes en caché antes de renderizar
+(async function init(){
+  await migrateImagesToIndexedDB().catch(()=>{});
+  await ImgCache.preloadAll().catch(()=>{});
+  renderDashboard();
+})();
 
 // ═══════════════════════════════════════
 // SWIPE GESTURES (exam navigation)
