@@ -100,10 +100,10 @@ nav{flex:1;padding:10px;display:flex;flex-direction:column;gap:2px}
 .pbar{height:100%;border-radius:4px;transition:width .4s ease}
 
 /* Modal */
-.overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);z-index:999;display:none;align-items:center;justify-content:center;padding:20px}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);z-index:999;display:none;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .overlay.open{display:flex;animation:fadeIn .2s ease}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--rl);padding:28px;max-width:640px;width:100%;max-height:88vh;overflow-y:auto;animation:fadeUp .25s ease}
+.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--rl);padding:28px;max-width:640px;width:100%;-webkit-overflow-scrolling:touch;animation:fadeUp .25s ease}
 
 /* Toast */
 #toasts{position:fixed;bottom:22px;right:22px;z-index:9999;display:flex;flex-direction:column;gap:7px}
@@ -297,7 +297,7 @@ input[type=range]::-moz-range-progress{background:var(--accent);border-radius:3p
     <div style="padding:14px 18px;border-top:1px solid var(--border)">
       <div style="display:flex;flex-direction:column;gap:6px">
         <button onclick="exportBackup();closeDrawer()" style="width:100%;padding:10px;border-radius:6px;background:rgba(52,196,124,.12);color:var(--green);border:1px solid rgba(52,196,124,.25);font-size:12px;font-family:var(--sans);cursor:pointer;font-weight:500">💾 Exportar backup</button>
-        <button onclick="document.getElementById('import-input-mob').click()" style="width:100%;padding:10px;border-radius:6px;background:rgba(79,142,247,.1);color:var(--accent);border:1px solid rgba(79,142,247,.2);font-size:12px;font-family:var(--sans);cursor:pointer;font-weight:500">📂 Importar backup</button>
+        <button onclick="closeDrawer();setTimeout(()=>document.getElementById('import-input-global').click(),200)" style="width:100%;padding:10px;border-radius:6px;background:rgba(79,142,247,.1);color:var(--accent);border:1px solid rgba(79,142,247,.2);font-size:12px;font-family:var(--sans);cursor:pointer;font-weight:500">📂 Importar backup</button>
         <button onclick="openColorPicker();closeDrawer()" style="width:100%;padding:10px;border-radius:6px;background:var(--bg3);color:var(--text2);border:1px solid var(--border);font-size:12px;font-family:var(--sans);cursor:pointer;font-weight:500">🎨 Color del tema</button>
         <input type="file" id="import-input-mob" accept=".json" style="display:none" onchange="importBackup(event)">
       </div>
@@ -340,7 +340,7 @@ input[type=range]::-moz-range-progress{background:var(--accent);border-radius:3p
     <span style="color:var(--accent);font-family:var(--mono);font-size:9px">v2.0 — datos locales</span>
     <div style="margin-top:10px;display:flex;flex-direction:column;gap:5px">
       <button onclick="exportBackup()" style="width:100%;padding:7px 10px;border-radius:6px;background:rgba(52,196,124,.12);color:var(--green);border:1px solid rgba(52,196,124,.25);font-size:11px;font-family:var(--sans);cursor:pointer;font-weight:500">💾 Exportar backup</button>
-      <button onclick="document.getElementById('import-input').click()" style="width:100%;padding:7px 10px;border-radius:6px;background:rgba(79,142,247,.1);color:var(--accent);border:1px solid rgba(79,142,247,.2);font-size:11px;font-family:var(--sans);cursor:pointer;font-weight:500">📂 Importar backup</button>
+      <button onclick="document.getElementById('import-input-global').click()" style="width:100%;padding:7px 10px;border-radius:6px;background:rgba(79,142,247,.1);color:var(--accent);border:1px solid rgba(79,142,247,.2);font-size:11px;font-family:var(--sans);cursor:pointer;font-weight:500">📂 Importar backup</button>
       <input type="file" id="import-input" accept=".json" style="display:none" onchange="importBackup(event)">
     </div>
   </div>
@@ -426,24 +426,112 @@ input[type=range]::-moz-range-progress{background:var(--accent);border-radius:3p
     <div id="modal-body"></div>
   </div>
 </div>
+<input type="file" id="img-file-input-global" accept="image/*" style="position:fixed;left:-9999px;top:-9999px;opacity:0;width:1px;height:1px" onchange="handleImgFileGlobal(event)">
+<input type="file" id="import-input-global" accept=".json" style="position:fixed;left:-9999px;top:-9999px;opacity:0;width:1px;height:1px" onchange="importBackup(event)">
 
 <!-- TOASTS -->
 <div id="toasts"></div>
 
 <script>
 // ═══════════════════════════════════════
-// STORAGE (localStorage as DB)
+// STORAGE — localStorage para datos, IndexedDB para imágenes
 // ═══════════════════════════════════════
 const DB = {
   get(k){ try{ return JSON.parse(localStorage.getItem('mr_'+k)||'null') }catch{return null} },
   set(k,v){ localStorage.setItem('mr_'+k, JSON.stringify(v)) },
   questions(){ return this.get('questions')||[] },
   exams(){ return this.get('exams')||[] },
-  stats(){ return this.get('stats')||{} }, // questionId -> {seen,correct,wrong,ef,interval,nextReview}
+  stats(){ return this.get('stats')||{} },
   saveQuestions(q){ this.set('questions',q) },
   saveExams(e){ this.set('exams',e) },
   saveStats(s){ this.set('stats',s) },
 };
+
+// ═══════════════════════════════════════
+// IMAGE STORE — IndexedDB (sin límite práctico)
+// ═══════════════════════════════════════
+const ImgStore = (() => {
+  const DB_NAME = 'mr_images', STORE = 'images';
+  let _db = null;
+  function open() {
+    return new Promise((res, rej) => {
+      if (_db) return res(_db);
+      const req = indexedDB.open(DB_NAME, 1);
+      req.onupgradeneeded = e => e.target.result.createObjectStore(STORE);
+      req.onsuccess = e => { _db = e.target.result; res(_db); };
+      req.onerror = e => rej(e.target.error);
+    });
+  }
+  return {
+    async save(id, base64) {
+      const db = await open();
+      return new Promise((res, rej) => {
+        const tx = db.transaction(STORE, 'readwrite');
+        tx.objectStore(STORE).put(base64, id);
+        tx.oncomplete = () => res(); tx.onerror = e => rej(e.target.error);
+      });
+    },
+    async get(id) {
+      const db = await open();
+      return new Promise((res, rej) => {
+        const tx = db.transaction(STORE, 'readonly');
+        const req = tx.objectStore(STORE).get(id);
+        req.onsuccess = () => res(req.result || null); req.onerror = e => rej(e.target.error);
+      });
+    },
+    async del(id) {
+      const db = await open();
+      return new Promise((res, rej) => {
+        const tx = db.transaction(STORE, 'readwrite');
+        tx.objectStore(STORE).delete(id);
+        tx.oncomplete = () => res(); tx.onerror = e => rej(e.target.error);
+      });
+    },
+    async getAll() {
+      const db = await open();
+      return new Promise((res, rej) => {
+        const tx = db.transaction(STORE, 'readonly');
+        const store = tx.objectStore(STORE);
+        const result = {};
+        const reqKeys = store.getAllKeys();
+        reqKeys.onsuccess = () => {
+          const keys = reqKeys.result;
+          if (!keys.length) return res(result);
+          let done = 0;
+          keys.forEach(k => {
+            const r = store.get(k);
+            r.onsuccess = () => { result[k] = r.result; if (++done === keys.length) res(result); };
+            r.onerror = () => { if (++done === keys.length) res(result); };
+          });
+        };
+        reqKeys.onerror = e => rej(e.target.error);
+      });
+    },
+    async clear() {
+      const db = await open();
+      return new Promise((res, rej) => {
+        const tx = db.transaction(STORE, 'readwrite');
+        tx.objectStore(STORE).clear();
+        tx.oncomplete = () => res(); tx.onerror = e => rej(e.target.error);
+      });
+    },
+    async sizeBytes() {
+      const all = await this.getAll();
+      return Object.values(all).reduce((s, v) => s + (v ? v.length * 0.75 : 0), 0);
+    }
+  };
+})();
+
+async function migrateImagesToIndexedDB() {
+  const qs = DB.questions();
+  const toMigrate = qs.filter(q => q.image && q.image.startsWith('data:'));
+  if (!toMigrate.length) return;
+  let count = 0;
+  for (const q of toMigrate) {
+    try { await ImgStore.save(q.id, q.image); q.image = '__idb__'; count++; } catch(e) {}
+  }
+  if (count > 0) { try { DB.saveQuestions(qs); } catch(e) {} }
+}
 
 // ═══════════════════════════════════════
 // UTILS
@@ -571,13 +659,16 @@ function goto(page){
   if(page==='semanas') renderSemanas();
 }
 
+let _scrollY=0;
 function openDrawer(){
+  _scrollY=window.scrollY||document.documentElement.scrollTop;
   document.getElementById('mob-drawer').classList.add('open');
-  document.body.style.overflow='hidden';
+  document.body.style.position='fixed'; document.body.style.top=`-${_scrollY}px`; document.body.style.width='100%';
 }
 function closeDrawer(){
   document.getElementById('mob-drawer').classList.remove('open');
-  document.body.style.overflow='';
+  document.body.style.position=''; document.body.style.top=''; document.body.style.width='';
+  window.scrollTo(0,_scrollY);
 }
 
 // ═══════════════════════════════════════
@@ -595,14 +686,18 @@ function openModal(title, html){
 // ═══════════════════════════════════════
 let editingQId = null;
 
-function showForm(id=null){
+async function showForm(id=null){
   editingQId=id;
-  _currentImgBase64=null; // reset each time form opens
+  _currentImgBase64=null;
   let q={statement:'',options:[{id:'a',text:''},{id:'b',text:''},{id:'c',text:''},{id:'d',text:''}],correct_id:'a',category:'basicas',subcategory:'',difficulty:'medio',explanation:'',image:null};
   if(id){
     q=DB.questions().find(x=>x.id===id)||q;
+    if(q.image==='__idb__'){
+      try { const img=await ImgStore.get(id); if(img){_currentImgBase64=img;q={...q,image:img};}else{q={...q,image:null};} } catch(e){q={...q,image:null};}
+    }
   }
   openModal(id?'Editar Pregunta':'Nueva Pregunta', formHTML(q));
+  if(_currentImgBase64){const el=document.getElementById('img-preview-el');if(el)el.src=_currentImgBase64;}
 }
 
 function formHTML(q){
@@ -652,28 +747,27 @@ function formHTML(q){
           <span style="font-size:13px;font-weight:500;color:var(--text)">Imagen de referencia</span>
           <span style="font-size:11px;color:var(--text3)">(flashcard opcional)</span>
         </div>
-        <span id="img-section-arrow" style="color:var(--text3);font-size:12px">▼</span>
+        <span id="img-section-arrow" style="color:var(--text3);font-size:12px">${q.image?'▲':'▼'}</span>
       </button>
-      <div id="img-section" style="display:${q.image?'block':'none'};padding:14px;border-top:1px solid var(--border)">
+      <div id="img-section" style="display:block;padding:14px;border-top:1px solid var(--border)">
         <!-- Drop zone -->
-        <div id="img-dropzone" onclick="document.getElementById('img-file-input').click()"
+        <div id="img-dropzone"
+          onclick="triggerImgInput()"
           ondragover="event.preventDefault();this.style.borderColor='var(--accent)'"
           ondragleave="this.style.borderColor='var(--border2)'"
           ondrop="handleImgDrop(event)"
-          style="border:2px dashed var(--border2);border-radius:var(--r);padding:20px;text-align:center;cursor:pointer;transition:border-color .2s;${q.image?'display:none':''}">
+          style="border:2px dashed var(--border2);border-radius:var(--r);padding:20px;text-align:center;cursor:pointer;transition:border-color .2s;${(q.image&&q.image!=='__idb__')||_currentImgBase64?'display:none':''}">
           <div style="font-size:28px;margin-bottom:6px">📁</div>
-          <p style="font-size:13px;color:var(--text2);font-weight:500">Haz clic o arrastra una imagen</p>
-          <p style="font-size:11px;color:var(--text3);margin-top:3px">PNG, JPG, GIF, WebP — máx. 5 MB</p>
+          <p style="font-size:13px;color:var(--text2);font-weight:500">Toca o arrastra una imagen</p>
+          <p style="font-size:11px;color:var(--text3);margin-top:3px">PNG, JPG, GIF, WebP — máx. 5 MB · se comprime automáticamente</p>
         </div>
-        <input type="file" id="img-file-input" accept="image/*" style="display:none" onchange="handleImgFile(event)">
         <!-- Preview -->
-        <div id="img-preview" style="${q.image?'':'display:none'}">
+        <div id="img-preview" style="${(q.image&&q.image!=='__idb__')||_currentImgBase64?'':'display:none'}">
           <div style="position:relative;display:inline-block;max-width:100%">
-            <img id="img-preview-el" src="${q.image||''}" style="max-width:100%;max-height:280px;border-radius:var(--r);display:block;border:1px solid var(--border)">
+            <img id="img-preview-el" src="${q.image&&q.image!=='__idb__'?q.image:(_currentImgBase64||'')}" style="max-width:100%;max-height:280px;border-radius:var(--r);display:block;border:1px solid var(--border)">
             <button type="button" onclick="removeImg()" style="position:absolute;top:6px;right:6px;width:26px;height:26px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;font-size:14px;display:flex;align-items:center;justify-content:center;border:none;cursor:pointer">×</button>
           </div>
-          <p style="font-size:11px;color:var(--text3);margin-top:6px">Haz clic en × para eliminar · Haz clic en la zona para cambiar</p>
-          <button type="button" onclick="document.getElementById('img-file-input').click()" style="margin-top:6px;font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer">🔄 Cambiar imagen</button>
+          <button type="button" onclick="triggerImgInput()" style="margin-top:8px;font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer">🔄 Cambiar imagen</button>
         </div>
       </div>
     </div>
@@ -729,19 +823,24 @@ let _currentImgBase64 = null; // holds base64 while form is open
 function toggleImgSection(){
   const sec=document.getElementById('img-section');
   const arrow=document.getElementById('img-section-arrow');
+  if(!sec) return;
   const open=sec.style.display==='none';
   sec.style.display=open?'block':'none';
-  arrow.textContent=open?'▲':'▼';
+  if(arrow) arrow.textContent=open?'▲':'▼';
 }
-
+function triggerImgInput(){
+  const inp=document.getElementById('img-file-input-global');
+  if(!inp) return; inp.value=''; inp.click();
+}
 function handleImgFile(event){
-  const file=event.target.files[0];
-  if(file) loadImgFile(file);
+  const file=event.target.files[0]; if(file) loadImgFile(file);
 }
-
+function handleImgFileGlobal(event){
+  const file=event.target.files[0]; if(file) loadImgFile(file); event.target.value='';
+}
 function handleImgDrop(event){
   event.preventDefault();
-  document.getElementById('img-dropzone').style.borderColor='var(--border2)';
+  const dz=document.getElementById('img-dropzone'); if(dz) dz.style.borderColor='var(--border2)';
   const file=event.dataTransfer.files[0];
   if(file && file.type.startsWith('image/')) loadImgFile(file);
   else toast('Solo se aceptan imágenes','error');
@@ -751,26 +850,37 @@ function loadImgFile(file){
   if(file.size>5*1024*1024){ toast('La imagen supera 5 MB','error'); return; }
   const reader=new FileReader();
   reader.onload=e=>{
-    _currentImgBase64=e.target.result;
-    const prev=document.getElementById('img-preview');
-    const drop=document.getElementById('img-dropzone');
-    const el=document.getElementById('img-preview-el');
-    if(el) el.src=_currentImgBase64;
-    if(prev) prev.style.display='block';
-    if(drop) drop.style.display='none';
+    const img=new Image();
+    img.onload=()=>{
+      const MAX=1200;
+      let {width:w,height:h}=img;
+      if(w>MAX||h>MAX){ if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;} }
+      const canvas=document.createElement('canvas');
+      canvas.width=w; canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      _currentImgBase64=canvas.toDataURL('image/jpeg',0.82);
+      const sec=document.getElementById('img-section'),arrow=document.getElementById('img-section-arrow');
+      if(sec&&sec.style.display==='none'){sec.style.display='block';if(arrow)arrow.textContent='▲';}
+      const prev=document.getElementById('img-preview'),drop=document.getElementById('img-dropzone'),el=document.getElementById('img-preview-el');
+      if(el) el.src=_currentImgBase64;
+      if(prev) prev.style.display='block';
+      if(drop) drop.style.display='none';
+      const kb=Math.round(_currentImgBase64.length*0.75/1024);
+      toast(`✅ Imagen lista (${w}×${h}px, ~${kb} KB)`,'success');
+    };
+    img.onerror=()=>toast('❌ No se pudo cargar la imagen','error');
+    img.src=e.target.result;
   };
+  reader.onerror=()=>toast('❌ No se pudo leer el archivo','error');
   reader.readAsDataURL(file);
 }
 
 function removeImg(){
   _currentImgBase64=null;
-  const prev=document.getElementById('img-preview');
-  const drop=document.getElementById('img-dropzone');
-  const el=document.getElementById('img-preview-el');
-  if(el) el.src='';
-  if(prev) prev.style.display='none';
-  if(drop) drop.style.display='block';
-  document.getElementById('img-file-input').value='';
+  const prev=document.getElementById('img-preview'),drop=document.getElementById('img-dropzone'),el=document.getElementById('img-preview-el');
+  if(el) el.src=''; if(prev) prev.style.display='none'; if(drop) drop.style.display='block';
+  const gi=document.getElementById('img-file-input-global'); if(gi) gi.value='';
+  const li=document.getElementById('img-file-input'); if(li) li.value='';
 }
 
 function saveQuestion(){
@@ -805,22 +915,31 @@ function saveQuestion(){
     created_at: editingQId? (DB.questions().find(x=>x.id===editingQId)||{}).created_at||new Date().toISOString() : new Date().toISOString(),
   };
 
+  const imgData=q.image;
+  const qToSave={...q, image: imgData?'__idb__':null};
   const qs=DB.questions();
-  if(editingQId){
-    const idx=qs.findIndex(x=>x.id===editingQId);
-    qs[idx]=q;
-    toast('Pregunta actualizada','success');
-  } else {
-    qs.push(q);
-    // Init stats
-    const stats=DB.stats();
-    if(!stats[q.id]) stats[q.id]={seen:0,correct:0,wrong:0,ef:2.5,interval:1,nextReview:todayStr()};
-    DB.saveStats(stats);
-    toast('Pregunta creada','success');
+  const isEdit=!!editingQId;
+  if(isEdit){const idx=qs.findIndex(x=>x.id===editingQId);qs[idx]=qToSave;}
+  else{qs.push(qToSave);}
+  async function doSave(){
+    if(imgData&&imgData.startsWith('data:')) await ImgStore.save(q.id,imgData);
+    else if(!imgData) await ImgStore.del(q.id);
+    try{ DB.saveQuestions(qs); }
+    catch(e){
+      if(e.name==='QuotaExceededError'||e.code===22||e.code===1014){
+        toast('❌ localStorage lleno. Exporta un backup y recarga.','error'); return;
+      }
+      throw e;
+    }
+    if(!isEdit){
+      const stats=DB.stats();
+      if(!stats[q.id]) stats[q.id]={seen:0,correct:0,wrong:0,ef:2.5,interval:1,nextReview:todayStr()};
+      DB.saveStats(stats);
+    }
+    toast(isEdit?'✅ Pregunta actualizada':'✅ Pregunta creada','success');
+    closeModal(); renderPreguntas();
   }
-  DB.saveQuestions(qs);
-  closeModal();
-  renderPreguntas();
+  doSave().catch(e=>toast('❌ Error: '+e.message,'error'));
 }
 
 function deleteQuestion(id){
@@ -843,7 +962,15 @@ function renderPreguntas(){
   let filtered=qs.filter(q=>{
     if(cat&&q.category!==cat) return false;
     if(diff&&q.difficulty!==diff) return false;
-    if(search&&!q.statement.toLowerCase().includes(search)) return false;
+    if(search){
+      const hay=[
+        q.statement||'',
+        (q.options||[]).map(o=>o.text||'').join(' '),
+        q.explanation||'',
+        q.subcategory||''
+      ].join(' ').toLowerCase();
+      if(!hay.includes(search)) return false;
+    }
     return true;
   });
 
@@ -1734,46 +1861,45 @@ function renderEstadisticas(){
   const subRows=Object.entries(sub).filter(([,s])=>s.total>0).sort((a,b)=>a[1].correct/a[1].total-b[1].correct/b[1].total);
 
   el.innerHTML=`
-  <!-- Progress chart (line chart SVG) -->
-  ${exams.length<2?`<div class="card mb4"><div class="empty" style="padding:30px"><p style="font-size:13px;color:var(--text3)">Completa al menos 2 simulacros para ver tu progreso</p></div></div>`:`
-  <div class="card mb4">
-    <h3 style="font-size:14px;font-weight:600;margin-bottom:4px">Progreso en el Tiempo</h3>
-    <p style="font-size:11px;color:var(--text3);margin-bottom:18px">Últimos ${Math.min(exams.length,15)} simulacros</p>
-    ${(()=>{
-      const data=exams.slice(0,15).reverse();
-      const W=560,H=170,pad={t:24,r:20,b:36,l:36};
-      const iW=W-pad.l-pad.r, iH=H-pad.t-pad.b;
-      const n=data.length;
-      const xs=data.map((_,i)=>pad.l+(n===1?iW/2:i*(iW/(n-1))));
-      const ys=data.map(e=>pad.t+iH-(e.score/100)*iH);
-      const gridLines=[25,50,75,100].map(v=>{
-        const y=pad.t+iH-(v/100)*iH;
-        return '<line x1="'+pad.l+'" y1="'+y+'" x2="'+(W-pad.r)+'" y2="'+y+'" stroke="var(--border)" stroke-width="1" stroke-dasharray="'+(v===50?'4,3':'2,5')+'"/><text x="'+(pad.l-5)+'" y="'+(y+4)+'" text-anchor="end" font-size="10" fill="var(--text3)" font-family="var(--mono)">'+v+'</text>';
-      }).join('');
-      const makeCurve=(xArr,yArr)=>{
-        if(xArr.length===1) return '';
-        let d='M'+xArr[0]+','+yArr[0]+' ';
-        for(let i=1;i<xArr.length;i++){
-          const cpx=(xArr[i-1]+xArr[i])/2;
-          d+='C'+cpx+','+yArr[i-1]+' '+cpx+','+yArr[i]+' '+xArr[i]+','+yArr[i]+' ';
-        }
-        return d;
-      };
-      const linePath=makeCurve(xs,ys);
-      const areaPath=linePath+' L'+xs[n-1]+','+(pad.t+iH)+' L'+xs[0]+','+(pad.t+iH)+' Z';
-      const dots=data.map((e,i)=>{
-        const col=e.score>=70?'#34c47c':e.score>=50?'#f5c842':'#f05a5a';
-        const showLbl=n<=8||i===0||i===n-1;
-        return '<circle cx="'+xs[i]+'" cy="'+ys[i]+'" r="4.5" fill="'+col+'" stroke="var(--bg2)" stroke-width="2"/>'+(showLbl?'<text x="'+xs[i]+'" y="'+(ys[i]-11)+'" text-anchor="middle" font-size="10" fill="'+col+'" font-family="var(--mono)" font-weight="700">'+e.score+'%</text>':'');
-      }).join('');
-      const xLabels=data.map((e,i)=>{
-        const show=n<=6||i===0||i===n-1||i%Math.ceil(n/5)===0;
-        if(!show) return '';
-        return '<text x="'+xs[i]+'" y="'+(H-5)+'" text-anchor="middle" font-size="9" fill="var(--text3)">'+new Date(e.date).toLocaleDateString('es-MX',{day:'2-digit',month:'short'})+'</text>';
-      }).join('');
-      return '<div style="overflow-x:auto"><svg viewBox="0 0 '+W+' '+H+'" width="100%" style="min-width:280px;max-width:100%;display:block"><defs><linearGradient id="lgArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--accent)" stop-opacity="0.2"/><stop offset="100%" stop-color="var(--accent)" stop-opacity="0.02"/></linearGradient></defs>'+gridLines+'<path d="'+areaPath+'" fill="url(#lgArea)"/><path d="'+linePath+'" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>'+dots+xLabels+'</svg></div>';
-    })()}
-  </div>`}
+  <!-- Progress chart (line chart SVG) — solo simulacros normales (mode=random), últimos 10 -->
+  ${(()=>{
+    const normalExams=exams.filter(e=>e.mode!=='reinforcement'&&e.mode!=='spaced').slice(0,10).reverse();
+    if(normalExams.length<2) return `<div class="card mb4"><div class="empty" style="padding:30px"><p style="font-size:13px;color:var(--text3)">Completa al menos 2 simulacros de preguntas totales para ver tu progreso</p></div></div>`;
+    const avg=Math.round(normalExams.reduce((s,e)=>s+e.score,0)/normalExams.length);
+    const W=580,H=190,pad={t:28,r:36,b:36,l:36};
+    const iW=W-pad.l-pad.r, iH=H-pad.t-pad.b;
+    const n=normalExams.length;
+    const xs=normalExams.map((_,i)=>pad.l+(n===1?iW/2:i*(iW/(n-1))));
+    const ys=normalExams.map(e=>pad.t+iH-(e.score/100)*iH);
+    const avgY=pad.t+iH-(avg/100)*iH;
+    const gridLines=[25,50,75,100].map(v=>{
+      const y=pad.t+iH-(v/100)*iH;
+      return '<line x1="'+pad.l+'" y1="'+y+'" x2="'+(W-pad.r)+'" y2="'+y+'" stroke="var(--border)" stroke-width="1" stroke-dasharray="'+(v===50?'4,3':'2,5')+'"/><text x="'+(pad.l-5)+'" y="'+(y+4)+'" text-anchor="end" font-size="10" fill="var(--text3)" font-family="var(--mono)">'+v+'</text>';
+    }).join('');
+    const makeCurve=(xArr,yArr)=>{
+      if(xArr.length===1) return '';
+      let d='M'+xArr[0]+','+yArr[0]+' ';
+      for(let i=1;i<xArr.length;i++){
+        const cpx=(xArr[i-1]+xArr[i])/2;
+        d+='C'+cpx+','+yArr[i-1]+' '+cpx+','+yArr[i]+' '+xArr[i]+','+yArr[i]+' ';
+      }
+      return d;
+    };
+    const linePath=makeCurve(xs,ys);
+    const areaPath=linePath+' L'+xs[n-1]+','+(pad.t+iH)+' L'+xs[0]+','+(pad.t+iH)+' Z';
+    const dots=normalExams.map((e,i)=>{
+      const col=e.score>=70?'#34c47c':e.score>=50?'#f5c842':'#f05a5a';
+      return '<circle cx="'+xs[i]+'" cy="'+ys[i]+'" r="4.5" fill="'+col+'" stroke="var(--bg2)" stroke-width="2"/><text x="'+xs[i]+'" y="'+(ys[i]-11)+'" text-anchor="middle" font-size="10" fill="'+col+'" font-family="var(--mono)" font-weight="700">'+e.score+'%</text>';
+    }).join('');
+    const xLabels=normalExams.map((e,i)=>{
+      const show=n<=6||i===0||i===n-1||i%Math.ceil(n/5)===0;
+      if(!show) return '';
+      return '<text x="'+xs[i]+'" y="'+(H-5)+'" text-anchor="middle" font-size="9" fill="var(--text3)">'+new Date(e.date).toLocaleDateString('es-MX',{day:'2-digit',month:'short'})+'</text>';
+    }).join('');
+    // Línea de promedio punteada
+    const avgLine='<line x1="'+pad.l+'" y1="'+avgY+'" x2="'+(W-pad.r)+'" y2="'+avgY+'" stroke="var(--yellow)" stroke-width="1.5" stroke-dasharray="5,3"/><text x="'+(W-pad.r+4)+'" y="'+(avgY+4)+'" font-size="10" fill="var(--yellow)" font-family="var(--mono)" font-weight="700">x̄'+avg+'%</text>';
+    return '<div class="card mb4"><h3 style="font-size:14px;font-weight:600;margin-bottom:2px">Progreso en el Tiempo</h3><p style="font-size:11px;color:var(--text3);margin-bottom:14px">Últimos '+normalExams.length+' simulacros · promedio <span style="color:var(--yellow);font-family:var(--mono);font-weight:700">'+avg+'%</span></p><div style="overflow-x:auto"><svg viewBox="0 0 '+W+' '+H+'" width="100%" style="min-width:280px;max-width:100%;display:block"><defs><linearGradient id="lgArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--accent)" stop-opacity="0.2"/><stop offset="100%" stop-color="var(--accent)" stop-opacity="0.02"/></linearGradient></defs>'+gridLines+avgLine+'<path d="'+areaPath+'" fill="url(#lgArea)"/><path d="'+linePath+'" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>'+dots+xLabels+'</svg></div></div>';
+  })()}
 
   <!-- Mastery by area -->
   ${subRows.length?`
@@ -2248,47 +2374,110 @@ function startRefuerzoMode(mode){
 // ═══════════════════════════════════════
 // BACKUP / RESTORE
 // ═══════════════════════════════════════
-function exportBackup(){
-  const data={
-    version:2,
-    exportedAt: new Date().toISOString(),
-    questions: DB.questions(),
-    exams: DB.exams(),
-    stats: DB.stats(),
-  };
+async function exportBackup(){
+  toast('⏳ Preparando backup...','info');
+  const qs=DB.questions();
+  let allImgs={}; try{allImgs=await ImgStore.getAll();}catch(e){}
+  const qsWithImgs=qs.map(q=>q.image==='__idb__'?{...q,image:allImgs[q.id]||null}:q);
+  const data={version:2,exportedAt:new Date().toISOString(),questions:qsWithImgs,exams:DB.exams(),stats:DB.stats()};
   const json=JSON.stringify(data,null,2);
+  const date=new Date().toISOString().split('T')[0];
+  const filename=`MedResidencia_backup_${date}.json`;
+  const isSafariOrIOS=/^((?!chrome|android).)*safari/i.test(navigator.userAgent)||/iPad|iPhone|iPod/.test(navigator.userAgent);
   const blob=new Blob([json],{type:'application/json'});
   const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  const date=new Date().toISOString().split('T')[0];
-  a.href=url;
-  a.download=`MedResidencia_backup_${date}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
-  toast('✅ Backup exportado correctamente','success');
+  if(isSafariOrIOS){
+    openModal('💾 Guardar backup',`<div style="display:flex;flex-direction:column;gap:16px">
+      <div style="padding:12px;background:rgba(52,196,124,.1);border:1px solid rgba(52,196,124,.25);border-radius:8px;font-size:13px;color:var(--green)">✅ Backup listo — ${data.questions.length} preguntas</div>
+      <p style="font-size:13px;color:var(--text2);line-height:1.6">En Safari/iOS toca el botón, luego <strong>Compartir → Guardar en Archivos</strong>.</p>
+      <a href="${url}" download="${filename}" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;border-radius:8px;background:var(--green);color:#041a0a;font-weight:600;font-size:14px;text-decoration:none" onclick="setTimeout(()=>URL.revokeObjectURL(this.href),15000)">📄 Abrir backup (${filename})</a>
+      <button class="btn btn-g w100" onclick="closeModal()">Cerrar</button>
+    </div>`);
+  } else {
+    const a=document.createElement('a'); a.href=url; a.download=filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+    toast('✅ Backup exportado correctamente','success');
+  }
 }
 
 function importBackup(event){
   const file=event.target.files[0];
   if(!file) return;
+  // Safari needs the file reference kept alive
+  const fileRef=file;
   const reader=new FileReader();
-  reader.onload=e=>{
+  reader.onload=function(e){
     try{
-      const data=JSON.parse(e.target.result);
-      if(!data.questions||!Array.isArray(data.questions))
-        throw new Error('Archivo inválido');
-      if(!confirm(`¿Importar backup?\n\n• ${data.questions.length} preguntas\n• ${(data.exams||[]).length} simulacros\n\nEsto reemplazará tus datos actuales.`)) return;
-      DB.saveQuestions(data.questions||[]);
-      DB.saveExams(data.exams||[]);
-      DB.saveStats(data.stats||{});
-      toast(`✅ Backup importado: ${data.questions.length} preguntas restauradas`,'success');
-      renderDashboard();
-      event.target.value='';
+      let text=e.target.result;
+      if(!text){ toast('❌ No se pudo leer el archivo','error'); return; }
+      // Strip BOM
+      if(text.charCodeAt(0)===0xFEFF) text=text.slice(1);
+      let data;
+      try{ data=JSON.parse(text); }
+      catch(parseErr){ toast('❌ JSON inválido: '+parseErr.message,'error'); return; }
+      if(!data||!Array.isArray(data.questions)){
+        toast('❌ No se encontró lista de preguntas','error'); return;
+      }
+      // Use a custom modal instead of confirm() (Safari blocks confirm in some contexts)
+      openModal('📂 Importar backup', `
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div style="padding:14px;background:var(--bg3);border-radius:8px;font-size:13px;line-height:1.7">
+            <div>📊 <strong>${data.questions.length}</strong> preguntas</div>
+            <div>🧪 <strong>${(data.exams||[]).length}</strong> simulacros</div>
+            <div>📈 <strong>${Object.keys(data.stats||{}).length}</strong> registros de estadísticas</div>
+          </div>
+          <div style="padding:11px;background:rgba(245,200,66,.08);border:1px solid rgba(245,200,66,.2);border-radius:8px;font-size:12px;color:var(--yellow)">
+            ⚠️ Esto reemplazará todos tus datos actuales.
+          </div>
+          <div style="display:flex;gap:10px">
+            <button class="btn btn-p" style="flex:1" onclick="confirmImport(${JSON.stringify(data).split('').map(c=>c==="'"?"\\'":c).join('')})">✅ Importar</button>
+            <button class="btn btn-g" style="flex:1" onclick="closeModal()">Cancelar</button>
+          </div>
+        </div>
+      `);
+      // Store data temporarily
+      window._pendingImport=data;
+      // Re-render the modal with a simpler approach
+      openModal('📂 Importar backup', `
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div style="padding:14px;background:var(--bg3);border-radius:8px;font-size:13px;line-height:1.7">
+            <div>📊 <strong>${data.questions.length}</strong> preguntas</div>
+            <div>🧪 <strong>${(data.exams||[]).length}</strong> simulacros</div>
+            <div>📈 <strong>${Object.keys(data.stats||{}).length}</strong> estadísticas</div>
+          </div>
+          <div style="padding:11px;background:rgba(245,200,66,.08);border:1px solid rgba(245,200,66,.2);border-radius:8px;font-size:12px;color:var(--yellow)">
+            ⚠️ Esto reemplazará todos tus datos actuales.
+          </div>
+          <div style="display:flex;gap:10px">
+            <button class="btn btn-p" style="flex:1" onclick="confirmImport()">✅ Sí, importar</button>
+            <button class="btn btn-g" style="flex:1" onclick="closeModal()">Cancelar</button>
+          </div>
+        </div>
+      `);
     } catch(err){
-      toast('❌ Error al importar: archivo no válido','error');
+      toast('❌ Error: '+err.message,'error');
     }
+    event.target.value='';
   };
-  reader.readAsText(file);
+  reader.onerror=function(){ toast('❌ No se pudo leer el archivo','error'); };
+  reader.readAsText(fileRef, 'UTF-8');
+}
+
+function confirmImport(){
+  const data=window._pendingImport;
+  if(!data){ closeModal(); return; }
+  try{
+    DB.saveQuestions(data.questions||[]);
+    DB.saveExams(data.exams||[]);
+    DB.saveStats(data.stats||{});
+    window._pendingImport=null;
+    closeModal();
+    toast(`✅ ${data.questions.length} preguntas importadas`,'success');
+    renderDashboard();
+  } catch(err){
+    toast('❌ Error al guardar: '+err.message,'error');
+  }
 }
 
 // ═══════════════════════════════════════
@@ -2387,6 +2576,7 @@ if(localStorage.getItem('mr_theme')==='light'){
 }
 // Restore accent color
 applyAccentColor(parseInt(localStorage.getItem('mr_accent_idx')||'0'));
+migrateImagesToIndexedDB().catch(()=>{});
 renderDashboard();
 
 // ═══════════════════════════════════════
@@ -2410,6 +2600,47 @@ renderDashboard();
     else      gotoQ(activeExam.currentIdx-1);  // swipe right = prev
   },{passive:true});
 })();
+
+// ═══════════════════════════════════════
+// STORAGE MANAGER
+// ═══════════════════════════════════════
+function fmtBytes(b){
+  if(b<1024) return b+'B'; if(b<1024*1024) return (b/1024).toFixed(1)+'KB';
+  return (b/1024/1024).toFixed(2)+'MB';
+}
+async function openStorageManager(){
+  let lsTotal=0;
+  for(let k in localStorage){ if(localStorage.hasOwnProperty(k)) lsTotal+=((localStorage[k].length+k.length)*2); }
+  let idbBytes=0; try{idbBytes=await ImgStore.sizeBytes();}catch(e){}
+  const qs=DB.questions(), withImg=qs.filter(q=>q.image&&q.image!==null);
+  const LIMIT=5*1024*1024, pct=Math.min(100,Math.round(lsTotal/LIMIT*100));
+  const color=pct>85?'var(--red)':pct>60?'var(--yellow)':'var(--green)';
+  openModal('🗜️ Almacenamiento',`<div style="display:flex;flex-direction:column;gap:16px">
+    <div style="padding:14px;background:var(--bg3);border-radius:8px">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:8px;font-weight:600">localStorage (texto)</div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+        <span style="font-size:12px">Usado</span>
+        <span style="font-size:12px;font-family:var(--mono);color:${color}">${fmtBytes(lsTotal)} / ~5MB (${pct}%)</span>
+      </div>
+      <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden">
+        <div style="width:${pct}%;height:100%;background:${color};border-radius:3px"></div>
+      </div>
+    </div>
+    <div style="padding:14px;background:var(--bg3);border-radius:8px">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:6px;font-weight:600">IndexedDB (imágenes)</div>
+      <div style="display:flex;justify-content:space-between">
+        <span style="font-size:12px">${withImg.length} imágenes</span>
+        <span style="font-size:12px;font-family:var(--mono);color:var(--green)">~${fmtBytes(idbBytes)} · sin límite práctico</span>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn btn-p w100" onclick="closeModal();migrateImagesToIndexedDB().then(()=>{toast('✅ Migración completada','success');renderPreguntas();})">⬆️ Migrar imágenes antiguas a IndexedDB</button>
+      <button class="btn btn-g w100" onclick="exportBackup()">💾 Exportar backup completo</button>
+      <button class="btn btn-g w100" onclick="closeModal()">Cerrar</button>
+    </div>
+  </div>`);
+}
+
 </script>
 </body>
 </html>
