@@ -487,6 +487,21 @@ const ImgStore = (() => {
         tx.oncomplete = () => res(); tx.onerror = e => rej(e.target.error);
       });
     },
+    // Delete all keys starting with prefix (e.g. for multi-image cleanup)
+    async delByPrefix(prefix) {
+      const db = await open();
+      return new Promise((res, rej) => {
+        const tx = db.transaction(STORE, 'readwrite');
+        const store = tx.objectStore(STORE);
+        const req = store.getAllKeys();
+        req.onsuccess = () => {
+          const keys = req.result.filter(k => k === prefix || k.startsWith(prefix + '_'));
+          keys.forEach(k => store.delete(k));
+          tx.oncomplete = () => res(); tx.onerror = e => rej(e.target.error);
+        };
+        req.onerror = e => rej(e.target.error);
+      });
+    },
     async getAll() {
       const db = await open();
       return new Promise((res, rej) => {
@@ -534,22 +549,51 @@ const ImgCache = {
   get(id) { return this._c[id] || null; },
   set(id, b64) { this._c[id] = b64; },
   del(id) { delete this._c[id]; },
+  // Legacy single-image resolve (returns first image or null)
   resolve(q) {
-    if (!q || !q.image) return null;
-    if (q.image === '__idb__') return this._c[q.id] || null;
-    return q.image;
-  }
+    const all = this.resolveAll(q);
+    return all.length ? all[0] : null;
+  },
+  // Returns array of resolved base64 strings for all images of question
+  resolveAll(q) {
+    if (!q) return [];
+    // New multi-image format
+    if (Array.isArray(q.images)) {
+      return q.images.map((img, i) => {
+        if (!img) return null;
+        if (img === '__idb__') return this._c[q.id + '_' + i] || null;
+        return img;
+      }).filter(Boolean);
+    }
+    // Legacy single-image
+    if (q.image) {
+      if (q.image === '__idb__') { const v = this._c[q.id]; return v ? [v] : []; }
+      return [q.image];
+    }
+    return [];
+  },
+  hasImages(q) { return this.resolveAll(q).length > 0; }
 };
 
 async function migrateImagesToIndexedDB() {
   const qs = DB.questions();
-  const toMigrate = qs.filter(q => q.image && q.image.startsWith('data:'));
-  if (!toMigrate.length) return;
-  let count = 0;
-  for (const q of toMigrate) {
-    try { await ImgStore.save(q.id, q.image); ImgCache.set(q.id, q.image); q.image = '__idb__'; count++; } catch(e) {}
+  let changed = false;
+  // Migrate legacy base64 in q.image to IndexedDB
+  for (const q of qs.filter(q => q.image && q.image.startsWith('data:'))) {
+    try { await ImgStore.save(q.id, q.image); ImgCache.set(q.id, q.image); q.image = '__idb__'; changed = true; } catch(e) {}
   }
-  if (count > 0) { try { DB.saveQuestions(qs); } catch(e) {} }
+  // Convert legacy q.image -> q.images array with new keying
+  for (const q of qs.filter(q => q.image && !Array.isArray(q.images))) {
+    const newKey = q.id + '_0';
+    try {
+      const data = await ImgStore.get(q.id); // legacy key
+      if (data) { await ImgStore.save(newKey, data); ImgCache.set(newKey, data); }
+    } catch(e) {}
+    q.images = ['__idb__'];
+    delete q.image;
+    changed = true;
+  }
+  if (changed) { try { DB.saveQuestions(qs); } catch(e) {} }
 }
 
 // ═══════════════════════════════════════
@@ -707,16 +751,25 @@ let editingQId = null;
 
 async function showForm(id=null){
   editingQId=id;
-  _currentImgBase64=null;
-  let q={statement:'',options:[{id:'a',text:''},{id:'b',text:''},{id:'c',text:''},{id:'d',text:''}],correct_id:'a',category:'basicas',subcategory:'',difficulty:'medio',explanation:'',image:null};
+  _currentImgs=[null,null,null]; // up to 3 images, null = empty slot
+  _activeImgSlot=0; // which slot is being edited
+  let q={statement:'',options:[{id:'a',text:''},{id:'b',text:''},{id:'c',text:''},{id:'d',text:''}],correct_id:'a',category:'basicas',subcategory:'',difficulty:'medio',explanation:'',images:[]};
   if(id){
     q=DB.questions().find(x=>x.id===id)||q;
-    if(q.image==='__idb__'){
-      try { const img=await ImgStore.get(id); if(img){_currentImgBase64=img;q={...q,image:img};}else{q={...q,image:null};} } catch(e){q={...q,image:null};}
+    // Normalize: support legacy q.image
+    if(!Array.isArray(q.images) && q.image) q.images=[q.image];
+    if(!Array.isArray(q.images)) q.images=[];
+    // Load images from IDB into _currentImgs
+    for(let i=0;i<Math.min(q.images.length,3);i++){
+      if(q.images[i]==='__idb__'){
+        try{const img=await ImgStore.get(q.id+'_'+i);if(img)_currentImgs[i]=img;}catch(e){}
+      } else if(q.images[i]){
+        _currentImgs[i]=q.images[i];
+      }
     }
   }
   openModal(id?'Editar Pregunta':'Nueva Pregunta', formHTML(q));
-  if(_currentImgBase64){const el=document.getElementById('img-preview-el');if(el)el.src=_currentImgBase64;}
+  refreshImgSlotsUI();
 }
 
 function formHTML(q){
@@ -758,35 +811,38 @@ function formHTML(q){
       <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:5px">Explicación de la respuesta</label>
       <textarea id="f-exp" rows="2" style="resize:vertical">${q.explanation||''}</textarea>
     </div>
-    <!-- IMAGE SECTION -->
+    <!-- IMAGE SECTION (multi, up to 3) -->
     <div style="border:1px solid var(--border);border-radius:var(--r);overflow:hidden">
       <button type="button" onclick="toggleImgSection()" style="width:100%;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;background:var(--bg3);border:none;cursor:pointer;text-align:left">
         <div class="flex aic g2">
           <span>🖼️</span>
-          <span style="font-size:13px;font-weight:500;color:var(--text)">Imagen de referencia</span>
-          <span style="font-size:11px;color:var(--text3)">(flashcard opcional)</span>
+          <span style="font-size:13px;font-weight:500;color:var(--text)">Imágenes de referencia</span>
+          <span style="font-size:11px;color:var(--text3)">(hasta 3 · flashcard opcional)</span>
         </div>
-        <span id="img-section-arrow" style="color:var(--text3);font-size:12px">${q.image?'▲':'▼'}</span>
+        <span id="img-section-arrow" style="color:var(--text3);font-size:12px">▲</span>
       </button>
       <div id="img-section" style="display:block;padding:14px;border-top:1px solid var(--border)">
-        <!-- Drop zone -->
-        <div id="img-dropzone"
-          onclick="triggerImgInput()"
-          ondragover="event.preventDefault();this.style.borderColor='var(--accent)'"
-          ondragleave="this.style.borderColor='var(--border2)'"
-          ondrop="handleImgDrop(event)"
-          style="border:2px dashed var(--border2);border-radius:var(--r);padding:20px;text-align:center;cursor:pointer;transition:border-color .2s;${(q.image&&q.image!=='__idb__')||_currentImgBase64?'display:none':''}">
-          <div style="font-size:28px;margin-bottom:6px">📁</div>
-          <p style="font-size:13px;color:var(--text2);font-weight:500">Toca o arrastra una imagen</p>
-          <p style="font-size:11px;color:var(--text3);margin-top:3px">PNG, JPG, GIF, WebP — máx. 5 MB · se comprime automáticamente</p>
-        </div>
-        <!-- Preview -->
-        <div id="img-preview" style="${(q.image&&q.image!=='__idb__')||_currentImgBase64?'':'display:none'}">
-          <div style="position:relative;display:inline-block;max-width:100%">
-            <img id="img-preview-el" src="${q.image&&q.image!=='__idb__'?q.image:(_currentImgBase64||'')}" style="max-width:100%;max-height:280px;border-radius:var(--r);display:block;border:1px solid var(--border)">
-            <button type="button" onclick="removeImg()" style="position:absolute;top:6px;right:6px;width:26px;height:26px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;font-size:14px;display:flex;align-items:center;justify-content:center;border:none;cursor:pointer">×</button>
+        <!-- Slot tabs -->
+        <div id="img-slot-tabs" style="display:flex;gap:6px;margin-bottom:12px"></div>
+        <!-- Active slot area -->
+        <div id="img-slot-area">
+          <div id="img-dropzone"
+            onclick="triggerImgInput()"
+            ondragover="event.preventDefault();this.style.borderColor='var(--accent)'"
+            ondragleave="this.style.borderColor='var(--border2)'"
+            ondrop="handleImgDrop(event)"
+            style="border:2px dashed var(--border2);border-radius:var(--r);padding:20px;text-align:center;cursor:pointer;transition:border-color .2s">
+            <div style="font-size:28px;margin-bottom:6px">📁</div>
+            <p style="font-size:13px;color:var(--text2);font-weight:500">Toca o arrastra una imagen</p>
+            <p style="font-size:11px;color:var(--text3);margin-top:3px">PNG, JPG, GIF, WebP — máx. 5 MB · se comprime automáticamente</p>
           </div>
-          <button type="button" onclick="triggerImgInput()" style="margin-top:8px;font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer">🔄 Cambiar imagen</button>
+          <div id="img-preview" style="display:none">
+            <div style="position:relative;display:inline-block;max-width:100%">
+              <img id="img-preview-el" src="" style="max-width:100%;max-height:240px;border-radius:var(--r);display:block;border:1px solid var(--border)">
+              <button type="button" onclick="removeImg()" style="position:absolute;top:6px;right:6px;width:26px;height:26px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;font-size:14px;display:flex;align-items:center;justify-content:center;border:none;cursor:pointer">×</button>
+            </div>
+            <button type="button" onclick="triggerImgInput()" style="margin-top:8px;font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer">🔄 Cambiar imagen</button>
+          </div>
         </div>
       </div>
     </div>
@@ -837,7 +893,40 @@ function removeOption(id){
   if(row) row.remove();
 }
 
-let _currentImgBase64 = null; // holds base64 while form is open
+// Multi-image state: up to 3 slots
+let _currentImgs = [null, null, null];
+let _activeImgSlot = 0;
+
+function refreshImgSlotsUI(){
+  const MAX_SLOTS = 3;
+  const tabs = document.getElementById('img-slot-tabs');
+  if(!tabs) return;
+  // Count non-null slots plus one empty (if < max)
+  const filled = _currentImgs.filter(Boolean).length;
+  const numTabs = Math.min(filled + (filled < MAX_SLOTS ? 1 : 0), MAX_SLOTS);
+  // Clamp active slot
+  if(_activeImgSlot >= numTabs) _activeImgSlot = Math.max(0, numTabs - 1);
+  tabs.innerHTML = Array.from({length: numTabs}, (_, i) => {
+    const hasImg = !!_currentImgs[i];
+    const isActive = i === _activeImgSlot;
+    return `<button type="button" onclick="setActiveImgSlot(${i})"
+      style="padding:5px 11px;border-radius:6px;font-size:12px;font-weight:500;border:1px solid ${isActive?'var(--accent)':'var(--border)'};background:${isActive?'rgba(79,142,247,.15)':'var(--bg3)'};color:${isActive?'var(--accent)':'var(--text2)'};cursor:pointer;display:flex;align-items:center;gap:5px">
+      ${hasImg?'🖼️':'➕'} ${i+1}
+    </button>`;
+  }).join('');
+  // Show/hide drop zone vs preview
+  const src = _currentImgs[_activeImgSlot];
+  const drop = document.getElementById('img-dropzone');
+  const prev = document.getElementById('img-preview');
+  const el = document.getElementById('img-preview-el');
+  if(src){ if(el) el.src=src; if(prev) prev.style.display=''; if(drop) drop.style.display='none'; }
+  else { if(el) el.src=''; if(prev) prev.style.display='none'; if(drop) drop.style.display=''; }
+}
+
+function setActiveImgSlot(i){
+  _activeImgSlot = i;
+  refreshImgSlotsUI();
+}
 
 function toggleImgSection(){
   const sec=document.getElementById('img-section');
@@ -877,15 +966,12 @@ function loadImgFile(file){
       const canvas=document.createElement('canvas');
       canvas.width=w; canvas.height=h;
       canvas.getContext('2d').drawImage(img,0,0,w,h);
-      _currentImgBase64=canvas.toDataURL('image/jpeg',0.82);
+      _currentImgs[_activeImgSlot]=canvas.toDataURL('image/jpeg',0.82);
       const sec=document.getElementById('img-section'),arrow=document.getElementById('img-section-arrow');
       if(sec&&sec.style.display==='none'){sec.style.display='block';if(arrow)arrow.textContent='▲';}
-      const prev=document.getElementById('img-preview'),drop=document.getElementById('img-dropzone'),el=document.getElementById('img-preview-el');
-      if(el) el.src=_currentImgBase64;
-      if(prev) prev.style.display='block';
-      if(drop) drop.style.display='none';
-      const kb=Math.round(_currentImgBase64.length*0.75/1024);
-      toast(`✅ Imagen lista (${w}×${h}px, ~${kb} KB)`,'success');
+      const kb=Math.round(_currentImgs[_activeImgSlot].length*0.75/1024);
+      toast(`✅ Imagen ${_activeImgSlot+1} lista (${w}×${h}px, ~${kb} KB)`,'success');
+      refreshImgSlotsUI();
     };
     img.onerror=()=>toast('❌ No se pudo cargar la imagen','error');
     img.src=e.target.result;
@@ -895,11 +981,13 @@ function loadImgFile(file){
 }
 
 function removeImg(){
-  _currentImgBase64=null;
-  const prev=document.getElementById('img-preview'),drop=document.getElementById('img-dropzone'),el=document.getElementById('img-preview-el');
-  if(el) el.src=''; if(prev) prev.style.display='none'; if(drop) drop.style.display='block';
+  _currentImgs[_activeImgSlot]=null;
+  // Compact: remove nulls in the middle, keep order
+  _currentImgs = _currentImgs.filter(Boolean);
+  while(_currentImgs.length < 3) _currentImgs.push(null);
+  if(_activeImgSlot > 0 && !_currentImgs[_activeImgSlot]) _activeImgSlot = Math.max(0, _activeImgSlot-1);
   const gi=document.getElementById('img-file-input-global'); if(gi) gi.value='';
-  const li=document.getElementById('img-file-input'); if(li) li.value='';
+  refreshImgSlotsUI();
 }
 
 function saveQuestion(){
@@ -923,6 +1011,9 @@ function saveQuestion(){
   if(options.some(o=>!o.text)){toast('Completa todas las opciones','error');return;}
   if(!correctId){toast('Selecciona la respuesta correcta','error');return;}
 
+  // Collect images array (filter nulls)
+  const imagesData = _currentImgs.filter(Boolean);
+
   const q={
     id: editingQId||uid(),
     statement,options,correct_id:correctId,
@@ -930,19 +1021,24 @@ function saveQuestion(){
     subcategory:document.getElementById('f-sub').value.trim(),
     difficulty:document.getElementById('f-diff').value,
     explanation:document.getElementById('f-exp').value.trim(),
-    image: _currentImgBase64 !== null ? _currentImgBase64 : (editingQId?(DB.questions().find(x=>x.id===editingQId)||{}).image||null:null),
+    images: imagesData,
     created_at: editingQId? (DB.questions().find(x=>x.id===editingQId)||{}).created_at||new Date().toISOString() : new Date().toISOString(),
   };
 
-  const imgData=q.image;
-  const qToSave={...q, image: imgData?'__idb__':null};
+  // Build the version to save (replace base64 with __idb__ markers)
+  const qToSave={...q, images: imagesData.map((_,i)=>'__idb__'), image: undefined};
+  if(!qToSave.images.length) { delete qToSave.images; }
   const qs=DB.questions();
   const isEdit=!!editingQId;
   if(isEdit){const idx=qs.findIndex(x=>x.id===editingQId);qs[idx]=qToSave;}
   else{qs.push(qToSave);}
   async function doSave(){
-    if(imgData&&imgData.startsWith('data:')){ await ImgStore.save(q.id,imgData); ImgCache.set(q.id,imgData); }
-    else if(!imgData){ await ImgStore.del(q.id); ImgCache.del(q.id); }
+    // Save each image to IDB with indexed key
+    await ImgStore.delByPrefix(q.id); // clear old images
+    for(let i=0;i<imagesData.length;i++){
+      const d=imagesData[i];
+      if(d&&d.startsWith('data:')){ await ImgStore.save(q.id+'_'+i,d); ImgCache.set(q.id+'_'+i,d); }
+    }
     try{ DB.saveQuestions(qs); }
     catch(e){
       if(e.name==='QuotaExceededError'||e.code===22||e.code===1014){
@@ -964,6 +1060,9 @@ function saveQuestion(){
 function deleteQuestion(id){
   if(!confirm('¿Eliminar esta pregunta?')) return;
   DB.saveQuestions(DB.questions().filter(q=>q.id!==id));
+  // Clean up images from IndexedDB
+  ImgStore.delByPrefix(id).catch(()=>{});
+  ImgCache.del(id); // legacy key
   toast('Pregunta eliminada','success');
   renderPreguntas();
 }
@@ -1012,7 +1111,7 @@ function renderPreguntas(){
             <span class="badge ${catBadge[q.category]}">${catLabel[q.category]}</span>
             <span class="badge ${diffBadge[q.difficulty]}">${diffLabel[q.difficulty]}</span>
             ${q.subcategory?`<span class="tag">${q.subcategory}</span>`:''}
-            ${q.image?`<span class="tag" style="color:var(--accent);border-color:rgba(79,142,247,.3)">🖼️ imagen</span>`:''}
+            ${(Array.isArray(q.images)?q.images.filter(Boolean).length:q.image?1:0)>0?`<span class="tag" style="color:var(--accent);border-color:rgba(79,142,247,.3)">🖼️ ${(Array.isArray(q.images)?q.images.filter(Boolean).length:1)>1?((Array.isArray(q.images)?q.images.filter(Boolean).length:1)+' imgs'):'imagen'}</span>`:''}
             ${acc!==null?`<span style="font-size:11px;font-family:var(--mono);color:${acc>=70?'var(--green)':acc>=50?'var(--yellow)':'var(--red)'}">${acc}% (${s.seen}×)</span>`:''}
           </div>
           <p style="font-size:13px;line-height:1.55">${q.statement.slice(0,150)}${q.statement.length>150?'…':''}</p>
@@ -1033,10 +1132,12 @@ function renderPreguntas(){
             ${o.id===q.correct_id?'<span style="font-size:11px;color:var(--green);font-weight:700">✓</span>':''}
           </div>`).join('')}
         ${q.explanation?`<div style="margin-top:8px;padding:9px 12px;background:rgba(79,142,247,.08);border:1px solid rgba(79,142,247,.15);border-radius:6px;font-size:12px;color:var(--text2);line-height:1.55"><strong style="color:var(--accent)">Explicación: </strong>${q.explanation}</div>`:''}
-        ${ImgCache.resolve(q)?`
+        ${ImgCache.resolveAll(q).length?`
         <div style="margin-top:10px">
-          <p style="font-size:11px;color:var(--text3);margin-bottom:6px">🖼️ Imagen de referencia</p>
-          <img src="${ImgCache.resolve(q)}" style="max-width:100%;max-height:320px;border-radius:var(--r);border:1px solid var(--border);display:block;cursor:pointer" onclick="openImgModal('${q.id}')" title="Clic para ampliar">
+          <p style="font-size:11px;color:var(--text3);margin-bottom:6px">🖼️ ${ImgCache.resolveAll(q).length>1?'Imágenes de referencia':'Imagen de referencia'}</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            ${ImgCache.resolveAll(q).map((src,i)=>`<img src="${src}" style="max-height:220px;max-width:100%;border-radius:var(--r);border:1px solid var(--border);cursor:pointer;flex:1;min-width:0;object-fit:contain" onclick="openImgFullscreen('${src}')" title="Clic para ampliar">`).join('')}
+          </div>
         </div>`:''}
       </div>
     </div>`;
@@ -1444,7 +1545,7 @@ function drawExam(){
       </div>
       ${answers[q.id]?`
       <div style="margin-top:12px;padding:10px 14px;background:rgba(79,142,247,.08);border:1px solid rgba(79,142,247,.15);border-radius:6px;font-size:12px;color:var(--accent)">
-        Respuesta guardada — continúa con la siguiente pregunta ${q.image?'· 🖼️ imagen disponible en el resumen final':''}
+        Respuesta guardada — continúa con la siguiente pregunta ${(Array.isArray(q.images)&&q.images.some(Boolean))||q.image?'· 🖼️ imagen(s) disponibles en el resumen final':''}
       </div>
       `:''}
 
@@ -1621,7 +1722,7 @@ function showResults(exam){
           return `
           <div style="background:var(--bg2);border:1px solid var(--border);border-left:3px solid ${borderLeft};border-radius:8px;padding:16px 18px;margin-bottom:12px">
             <p style="font-size:14px;line-height:1.65;color:var(--text);margin-bottom:12px;font-weight:500">${q.statement}</p>
-            <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:${(q.explanation||q.image)?'12px':'0'}">
+            <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:${(q.explanation||ImgCache.hasImages(q))?'12px':'0'}">
               ${(q.options||[]).map(o=>{
                 const isSel = sel===o.id, isCorr = o.id===q.correct_id;
                 let bg='var(--bg3)', border='transparent', col='var(--text3)', fw='400';
@@ -1635,11 +1736,13 @@ function showResults(exam){
                 </div>`;
               }).join('')}
             </div>
-            ${q.explanation?`<div style="padding:10px 13px;background:rgba(79,142,247,.08);border:1px solid rgba(79,142,247,.18);border-radius:6px;font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:${q.image?'12px':'0'}"><strong style="color:var(--accent)">💡 Explicación: </strong>${q.explanation}</div>`:''}
-            ${ImgCache.resolve(q)?`
-            <div style="margin-top:${q.explanation?'0':'0'}">
-              <p style="font-size:11px;color:var(--text3);margin-bottom:7px;display:flex;align-items:center;gap:5px"><span>🖼️</span> Imagen de referencia</p>
-              <img src="${ImgCache.resolve(q)}" style="max-width:100%;max-height:400px;border-radius:var(--r);border:1px solid var(--border);display:block;cursor:pointer;transition:opacity .2s" onclick="openImgFullscreen(this.src)" title="Clic para ampliar" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+            ${q.explanation?`<div style="padding:10px 13px;background:rgba(79,142,247,.08);border:1px solid rgba(79,142,247,.18);border-radius:6px;font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:${ImgCache.hasImages(q)?'12px':'0'}"><strong style="color:var(--accent)">💡 Explicación: </strong>${q.explanation}</div>`:''}
+            ${ImgCache.resolveAll(q).length?`
+            <div style="margin-top:0">
+              <p style="font-size:11px;color:var(--text3);margin-bottom:7px;display:flex;align-items:center;gap:5px"><span>🖼️</span> ${ImgCache.resolveAll(q).length>1?'Imágenes de referencia':'Imagen de referencia'}</p>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                ${ImgCache.resolveAll(q).map(src=>`<img src="${src}" style="max-height:280px;max-width:100%;flex:1;min-width:0;object-fit:contain;border-radius:var(--r);border:1px solid var(--border);display:block;cursor:pointer;transition:opacity .2s" onclick="openImgFullscreen('${src}')" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">`).join('')}
+              </div>
               <p style="font-size:10px;color:var(--text3);margin-top:4px">🔍 Clic para ampliar</p>
             </div>`:''}
           </div>`;
@@ -1742,7 +1845,7 @@ function answerDetailHTML(d,q){
         </div>`;
       }).join('')}
       ${q.explanation?`<div style="margin-top:8px;padding:9px 12px;background:rgba(79,142,247,.08);border:1px solid rgba(79,142,247,.15);border-radius:6px;font-size:12px;color:var(--text2);line-height:1.55"><strong style="color:var(--accent)">Explicación: </strong>${q.explanation}</div>`:''}
-      ${ImgCache.resolve(q)?`<div style="margin-top:10px"><p style="font-size:11px;color:var(--text3);margin-bottom:5px">🖼️ Imagen de referencia</p><img src="${ImgCache.resolve(q)}" style="max-width:100%;max-height:260px;border-radius:var(--r);border:1px solid var(--border);cursor:pointer" onclick="openImgFullscreen(this.src)"></div>`:''}
+      ${ImgCache.resolveAll(q).length?`<div style="margin-top:10px"><p style="font-size:11px;color:var(--text3);margin-bottom:5px">🖼️ ${ImgCache.resolveAll(q).length>1?'Imágenes':'Imagen'} de referencia</p><div style="display:flex;gap:6px;flex-wrap:wrap">${ImgCache.resolveAll(q).map(src=>`<img src="${src}" style="max-height:200px;max-width:100%;flex:1;min-width:0;object-fit:contain;border-radius:var(--r);border:1px solid var(--border);cursor:pointer" onclick="openImgFullscreen('${src}')">` ).join('')}</div></div>`:''}
     </div>
   </div>`;
 }
@@ -2078,11 +2181,11 @@ function renderRefuerzo(){
     </div>
     <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px">
       <div style="flex:1;min-width:100px;padding:12px;background:rgba(244,114,182,.08);border-radius:8px;border:1px solid rgba(244,114,182,.15);text-align:center">
-        <div style="font-size:28px;font-weight:700;font-family:var(--mono);color:var(--pink)">${qs.filter(q=>q.image).length}</div>
+        <div style="font-size:28px;font-weight:700;font-family:var(--mono);color:var(--pink)">${qs.filter(q=>(Array.isArray(q.images)&&q.images.some(Boolean))||q.image).length}</div>
         <div style="font-size:11px;color:var(--text2)">con imagen</div>
       </div>
     </div>
-    <button class="btn btn-lg w100" onclick="startFlashcards()" ${qs.filter(q=>q.image).length===0?'disabled':''} style="background:rgba(244,114,182,.12);color:var(--pink);border:1px solid rgba(244,114,182,.25)">
+    <button class="btn btn-lg w100" onclick="startFlashcards()" ${qs.filter(q=>(Array.isArray(q.images)&&q.images.some(Boolean))||q.image).length===0?'disabled':''} style="background:rgba(244,114,182,.12);color:var(--pink);border:1px solid rgba(244,114,182,.25)">
       🖼️ Iniciar flashcards
     </button>
   </div>`;
@@ -2261,7 +2364,7 @@ function startWeekExam(w){
 let flashcardState=null;
 
 function startFlashcards(){
-  const qs=shuffle(DB.questions().filter(q=>q.image));
+  const qs=shuffle(DB.questions().filter(q=>(Array.isArray(q.images)&&q.images.some(Boolean))||q.image));
   if(!qs.length){ toast('No hay preguntas con imágenes','error'); return; }
   flashcardState={ qs, idx:0, revealed:false };
   renderFlashcard();
@@ -2303,11 +2406,12 @@ function renderFlashcard(){
         ${q.subcategory?`<span class="tag">${q.subcategory}</span>`:''}
       </div>
 
-      <!-- IMAGE — always visible -->
-      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;cursor:zoom-in" onclick="openImgFullscreen('${ImgCache.resolve(q)||''}')"> 
-        <img src="${ImgCache.resolve(q)||''}" style="width:100%;max-height:340px;object-fit:contain;display:block;padding:12px">
-        <div style="padding:8px 14px;background:var(--bg3);border-top:1px solid var(--border);font-size:11px;color:var(--text3);text-align:center">Toca para ampliar 🔍</div>
-      </div>
+      <!-- IMAGES — always visible -->
+      ${(()=>{const imgs=ImgCache.resolveAll(q);return imgs.map((src,i)=>`
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;cursor:zoom-in" onclick="openImgFullscreen('${src}')">
+        <img src="${src}" style="width:100%;max-height:300px;object-fit:contain;display:block;padding:12px">
+        <div style="padding:7px 14px;background:var(--bg3);border-top:1px solid var(--border);font-size:11px;color:var(--text3);text-align:center">${imgs.length>1?`Imagen ${i+1} de ${imgs.length} — `:''}Toca para ampliar 🔍</div>
+      </div>`).join('');})()}
 
       <!-- Reveal button or revealed content -->
       ${!revealed ? `
@@ -2397,7 +2501,13 @@ async function exportBackup(){
   toast('⏳ Preparando backup...','info');
   const qs=DB.questions();
   let allImgs={}; try{allImgs=await ImgStore.getAll();}catch(e){}
-  const qsWithImgs=qs.map(q=>q.image==='__idb__'?{...q,image:allImgs[q.id]||null}:q);
+  const qsWithImgs=qs.map(q=>{
+    if(Array.isArray(q.images)){
+      return {...q, images: q.images.map((img,i)=>img==='__idb__'?(allImgs[q.id+'_'+i]||null):img).filter(Boolean)};
+    }
+    if(q.image==='__idb__') return {...q,image:allImgs[q.id]||null};
+    return q;
+  });
   const data={version:2,exportedAt:new Date().toISOString(),questions:qsWithImgs,exams:DB.exams(),stats:DB.stats()};
   const json=JSON.stringify(data,null,2);
   const date=new Date().toISOString().split('T')[0];
@@ -2489,19 +2599,29 @@ async function confirmImport(){
   try{
     // Primero guardar en IndexedDB las imágenes que vengan en base64 dentro del JSON
     const qs = data.questions||[];
-    const withImgs = qs.filter(q=>q.image&&q.image.startsWith('data:'));
-    if(withImgs.length){
-      toast(`⏳ Restaurando ${withImgs.length} imágenes...`,'info');
-      for(const q of withImgs){
-        try{ await ImgStore.save(q.id, q.image); ImgCache.set(q.id, q.image); q.image='__idb__'; }catch(e){}
+    // Handle multi-image (new format q.images) and legacy q.image
+    let imgCount = 0;
+    for(const q of qs){
+      if(Array.isArray(q.images)){
+        const newImgs = [];
+        for(let i=0;i<q.images.length;i++){
+          const d=q.images[i];
+          if(d&&d.startsWith('data:')){
+            try{ await ImgStore.save(q.id+'_'+i,d); ImgCache.set(q.id+'_'+i,d); newImgs.push('__idb__'); imgCount++; }catch(e){ newImgs.push(d); }
+          } else { newImgs.push(d); }
+        }
+        q.images = newImgs.filter(Boolean);
+      } else if(q.image&&q.image.startsWith('data:')){
+        try{ await ImgStore.save(q.id,q.image); ImgCache.set(q.id,q.image); q.image='__idb__'; imgCount++; }catch(e){}
       }
     }
+    if(imgCount) toast(`⏳ Restaurando ${imgCount} imágenes...`,'info');
     DB.saveQuestions(qs);
     DB.saveExams(data.exams||[]);
     DB.saveStats(data.stats||{});
     window._pendingImport=null;
     closeModal();
-    const imgMsg = withImgs.length ? ` · ${withImgs.length} imágenes restauradas` : '';
+    const imgMsg = imgCount ? ` · ${imgCount} imágenes restauradas` : '';
     toast(`✅ ${qs.length} preguntas importadas${imgMsg}`,'success');
     await ImgCache.preloadAll().catch(()=>{});
     renderDashboard();
